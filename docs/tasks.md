@@ -1,13 +1,11 @@
 # Tasks
 
-## Todo
+Board edited by the agents. One line per task: `- [ ] <task> (owner: <user>, branch: <user>/<slug>)`.
+Todo lines have no owner. Claiming = move the line to Doing, add owner and branch, commit `claim: <task>`, push main.
+Done lines: `- [x] <task> (owner: <user>)`.
 
-- [ ] 
+## Todo
 
 ## Doing
 
-- [ ] task (owner)
-
 ## Done
-
-- [x] 

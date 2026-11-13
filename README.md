@@ -2,6 +2,11 @@
 
 One-line pitch: TBD
 
+## Quick start
+
+Open Claude Code in this folder and type `/start` (or `/start <task>`). Agents follow the Workflow in `AGENTS.md`:
+claim a task on `docs/tasks.md`, work in a worktree, `/ship` to main, `/demo` to restart the shared demo.
+
 ## Team
 
 Alvaro, Bence, Aranguren, Hector
