@@ -176,7 +176,7 @@ export async function render(ctx) {
 function demoBanner() {
   if (!viewingDemo()) return '';
   const mine = hasProfile();
-  return `<div class="card buildbar demobar in"><span class="demo-badge">Demo</span><span class="grow">${mine ? 'You’re viewing the shared demo portfolio.' : 'A shared demo: four European fintechs, watched from an investor’s seat.'}</span><button type="button" class="btn ${mine ? '' : 'acc'}" data-demo-act="${mine ? 'me' : 'welcome'}">${mine ? 'Back to my profile' : 'Make it yours'}</button></div>`;
+  return `<div class="card buildbar demobar in"><span class="demo-badge">Demo</span><span class="grow">${mine ? 'You’re viewing the shared demo portfolio.' : 'Shared demo: four European fintechs, seen from an investor’s seat.'}</span><button type="button" class="btn ${mine ? '' : 'acc'}" data-demo-act="${mine ? 'me' : 'welcome'}">${mine ? 'Back to my profile' : 'Make it yours'}</button></div>`;
 }
 
 /** Founder home: your rivals and the investors around you, straight from the perimeter. */
@@ -188,7 +188,9 @@ async function drawHome(ctx, co) {
   const me = (per.companies || [])[0];
   if (!me) { if (!per.partial) box.remove(); return; }
   const rivals = me.rivals || [];
-  const inv = [...(me.investors || [])].sort((a, b) => (b.shared_with?.length || 0) - (a.shared_with?.length || 0));
+  const seen = new Set(); // Cala often holds several legal entities with one short name
+  const inv = [...(me.investors || [])].sort((a, b) => (b.shared_with?.length || 0) - (a.shared_with?.length || 0))
+    .filter(i => { const k = shortName(i.name).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
   const hot = inv.filter(i => i.shared_with?.length);
   const pill = i => i.shared_with?.length
     ? entPill({ ...i, type: 'Investor' }, `${shortName(i.name)} · also backs ${i.shared_with[0]}`, 'hot', `data-tip="${esc(`<b>${esc(i.name)}</b><br><span>Backs ${esc(co)} and ${esc(i.shared_with.join(', '))}</span>`)}"`)

@@ -17,6 +17,37 @@ EntityRef= { id: str, name: str, type: "Company"|"Person"|"Investor"|..., sub?: 
 Fact     = { label: str, value: str, sources: Source[] }
 ```
 
+## Profiles (per browser, no sign-up)
+
+Every browser has an anonymous profile id `pid` (`[A-Za-z0-9_-]{8,64}`, made by the web app, kept in localStorage
+`perimeter-pid` and mirrored in a `pid` cookie, path `/`). Requests say who is asking and what they are viewing:
+
+- identity: header `X-Profile: <pid>`, else query `?pid=` (EventSource), else the `pid` cookie (plain pages like `/ask`);
+- view: header `X-View: demo` (or `?view=demo`, or the `pview=demo` cookie when no `X-Profile` header is sent) while
+  exploring the shared demo.
+
+Data endpoints (`/api/portfolio`, `/api/perimeter`, `/api/feed`, `/api/check/stream`, `/api/ask`, `/api/draft`,
+`/api/rebuild`, `POST /api/portfolio`) read the visitor's own profile, or the **shared demo** when the pid has no
+profile yet or the view is `demo`. The demo is the original global portfolio (`CACHE_DIR/state.json`), untouched.
+Profiles live in `CACHE_DIR/profiles/<pid>.json` (profile) and `<pid>.state.json` (built perimeter).
+`DEMO_LOCK=1` only protects the shared demo (403 on changing or rebuilding it, unless `X-Admin-Token`); a visitor's
+own profile can always be changed. Cold builds share a global queue (`BUILD_SLOTS`, default 2); while waiting,
+`GET /api/portfolio` has `queued: <position>`. A founder is a portfolio of one: their company, with its rivals watched.
+
+- `GET /api/profile` → cheap, no Cala calls:
+  ```
+  { pid: str|null, exists: bool, viewing: "me"|"demo", demo_locked: bool,
+    profile: null | { role: "founder"|"investor", name?, fund_or_company_name?, my_company?: Company,
+                      portfolio_ids: str[], portfolio: Company[], watch_rivals: {id,name}[], created_at, updated_at },
+    context: { role, demo: bool, my_company: {id,name}|null, portfolio: {id,name}[],
+               rivals: {id,name}[], built_at } }     # compact: what the viewed space watches (read by /ask)
+  ```
+- `PUT /api/profile {role?, name?, fund_or_company_name?, my_company_id?, portfolio_ids?, watch_rivals?}` → creates or
+  updates the caller's profile (identity from `X-Profile`/cookie), returns the same shape as `GET`. Changing companies
+  starts a build. Founder: `my_company_id` (one company); switching investor → founder keeps the first company.
+  `X-Profile: demo` targets the shared demo (403 when locked).
+- `POST /api/profile/reset` → deletes the caller's profile and its perimeter → `{ok:true}`
+
 ## Endpoints (all JSON unless noted)
 
 - `GET /api/health` → `{ok:true, cala:true}`
@@ -28,8 +59,9 @@ Fact     = { label: str, value: str, sources: Source[] }
   return what has landed so far with `building: true, partial: true, status: CompanyStatus[]`: each company is
   published after its first hop (profile, people, investors, events), then again with rivals; screening last.
   A rebuild of an existing portfolio keeps serving the previous build (no `partial`).
-- `POST /api/portfolio {ids: str[]}` → saves and builds perimeter in background → `{ok:true}`
-- `POST /api/portfolio/demo` → loads the preset demo portfolio (real companies) → `{ok:true}`
+- `POST /api/portfolio {ids: str[]}` → replaces the viewed space's companies and builds in background → `{ok:true}`
+  (own profile: always allowed; shared demo: 403 under `DEMO_LOCK` unless `ids` is the demo set)
+- `POST /api/portfolio/demo` → makes sure the shared demo portfolio is built → `{ok:true}`
 - `GET /api/perimeter` →
   ```
   { companies: [{ ...Company, industry?, rivals: EntityRef[], investors: (EntityRef & {shared_with?: str[]})[],

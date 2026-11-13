@@ -520,3 +520,4 @@ button.fact:hover{background:var(--bg)}
 .demobar{gap:12px}
 @media (max-width:720px){.fhome{padding:18px}.fh-f{flex-wrap:wrap}.demobar{flex-wrap:wrap}.demobar .grow{flex-basis:calc(100% - 70px)}}
 .seat:focus-visible,.demo-cta:focus-visible{border-radius:16px;outline-offset:3px}
+.seat .ic{flex-shrink:0}

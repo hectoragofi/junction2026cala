@@ -44,10 +44,10 @@ export async function switchView(v, { to = '#/' } = {}) {
 function whoMenu(btn) {
   const items = [];
   if (hasProfile()) {
-    items.push({ label: 'Profile and settings', hint: profileLabel(), k: 'profile' });
-    items.push(who.view === 'demo' ? { label: 'Back to my profile', hint: profileLabel(), k: 'me' } : { label: 'Explore the demo', hint: 'Four European fintechs', k: 'demo' });
+    items.push({ label: 'Profile and settings', k: 'profile' });
+    items.push(who.view === 'demo' ? { label: 'Back to my profile', k: 'me' } : { label: 'Explore the demo', k: 'demo' });
   } else {
-    items.push({ label: 'Make it yours', hint: 'Founder or investor', k: 'welcome' });
+    items.push({ label: 'Make it yours', k: 'welcome' });
     items.push({ label: 'Profile and settings', k: 'profile' });
   }
   openMenu(btn, items, it => {

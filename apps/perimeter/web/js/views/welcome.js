@@ -127,7 +127,7 @@ function investor(ctx) {
   ctx.app.innerHTML = `<main class="main start onb">
     ${topBar(2)}
     <section class="hero in"><h1>What do you back?</h1>
-      <p>Paste your portfolio page or a few company names. We map rivals, co-investors and boards around each one.</p></section>
+      <p>Paste your portfolio page or a few company names. We map the rivals, investors and boards around each one.</p></section>
     <div class="sec in" style="gap:14px;animation-delay:.05s">
       <div class="field"><label for="iFund">Fund name <span class="opt">optional</span></label><input id="iFund" placeholder="e.g. Northzone" maxlength="60"></div>
       <form class="bigin" id="iForm" autocomplete="off">
