@@ -37,7 +37,7 @@ DEMO_PORTFOLIO = [
 ]
 
 STATE: dict = {"portfolio": [], "portfolio_ids": [], "built": None, "built_at": None}
-BUILD: dict = {"task": None, "progress": None, "error": None}
+BUILD: dict = {"task": None, "progress": None, "error": None, "partial": None}
 
 
 def load_state():
@@ -64,8 +64,14 @@ async def _company_card(eid: str) -> dict | None:
 
 async def _build(ids: list[str]):
     BUILD["error"] = None
+    BUILD["partial"] = None
+
+    def progress(msg, partial=None):
+        BUILD["progress"] = msg
+        if partial is not None:
+            BUILD["partial"] = partial
     try:
-        res = await build(ids, progress=lambda m: BUILD.__setitem__("progress", m))
+        res = await build(ids, progress=progress)
         STATE["built"] = res
         STATE["built_at"] = res["built_at"]
         if res.get("portfolio"):
@@ -77,6 +83,7 @@ async def _build(ids: list[str]):
         BUILD["error"] = str(e)
     finally:
         BUILD["progress"] = None
+        BUILD["partial"] = None
 
 
 def start_build(ids: list[str]):
@@ -144,8 +151,17 @@ async def resolve(body: ResolveIn):
 
 @app.get("/api/portfolio")
 async def get_portfolio():
+    part = _partial()
     return {"companies": STATE.get("portfolio") or [], "building": building(), "built_at": STATE.get("built_at"),
-            "progress": BUILD.get("progress"), "error": BUILD.get("error")}
+            "progress": BUILD.get("progress"), "error": BUILD.get("error"),
+            **({"status": part["status"]} if part else {})}
+
+
+def _partial() -> dict | None:
+    """While a new portfolio's first build runs (no finished build yet), what has landed so far."""
+    if STATE.get("built") or not building():
+        return None
+    return BUILD.get("partial")
 
 
 class PortfolioIn(BaseModel):
@@ -188,6 +204,9 @@ def _empty_perimeter():
 async def perimeter():
     b = STATE.get("built")
     if not b:
+        part = _partial()
+        if part:
+            return {**part["perimeter"], "building": True, "status": part["status"], "partial": True}
         return {**_empty_perimeter(), "building": building()}
     return {**b["perimeter"], "building": building(), "built_at": STATE.get("built_at")}
 
@@ -195,6 +214,9 @@ async def perimeter():
 @app.get("/api/feed")
 async def feed():
     b = STATE.get("built")
+    if not b and _partial():
+        part = _partial()
+        return {**part["feed"], "building": True, "status": part["status"], "partial": True}
     if not b:
         n = len(STATE.get("portfolio") or [])
         return {"summary": "Mapping your perimeter…" if building() else "Add companies to start watching.",

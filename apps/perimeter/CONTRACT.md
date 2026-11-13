@@ -22,7 +22,12 @@ Fact     = { label: str, value: str, sources: Source[] }
 - `GET /api/health` → `{ok:true, cala:true}`
 - `POST /api/resolve {text}` → `{ matches: [{ query, best: Company|null, candidates: Company[] }] }`
   `text` = comma/newline separated names or a URL. `Company = {id,name,description,website?,hq?,founded?}`.
-- `GET /api/portfolio` → `{ companies: Company[], building: bool, built_at: iso|null }`
+- `GET /api/portfolio` → `{ companies: Company[], building: bool, built_at: iso|null, progress?, error?, status?: CompanyStatus[] }`
+  `CompanyStatus = {id, name|null, status: "mapping"|"ready"|"rivals"}` (present only during a first build).
+  **Progressive first build:** while a new portfolio builds (no finished build yet), `/api/perimeter` and `/api/feed`
+  return what has landed so far with `building: true, partial: true, status: CompanyStatus[]`: each company is
+  published after its first hop (profile, people, investors, events), then again with rivals; screening last.
+  A rebuild of an existing portfolio keeps serving the previous build (no `partial`).
 - `POST /api/portfolio {ids: str[]}` → saves and builds perimeter in background → `{ok:true}`
 - `POST /api/portfolio/demo` → loads the preset demo portfolio (real companies) → `{ok:true}`
 - `GET /api/perimeter` →
@@ -61,6 +66,12 @@ Fact     = { label: str, value: str, sources: Source[] }
   - `event: step` data `{key, label, status: "running"|"done"|"error", detail?: str}` keys in order:
     `match` "Matching the company", `profile` "Reading Cala profile", `people` "Mapping people and owners",
     `events` "Reading corporate events", `rivals` "Finding closest rivals", `screen` "Screening sanctions and news".
+  - `event: partial` data `{section, data, pending?: bool, late?: bool}`, streamed as each Cala call lands, so the
+    report renders within seconds of the first entity retrieval and fills in:
+    `company` (Company & {legal_name, lei, tags}) and `facts` first (no extra call), then `people` and `ownership`
+    (sent at once with `pending: true` from the profile, again when person lookups / funding rounds land),
+    `funding`, `screen` (`{findings, sanctions, counts, unavailable}`), `rivals` last (`late: true` if it missed
+    its deadline). Steps for people/events/screen/rivals run in parallel. Calls are capped per check (~25).
   - `event: result` data =
     ```
     { company: Company & {legal_name?, lei?, industry?, tags: str[]},

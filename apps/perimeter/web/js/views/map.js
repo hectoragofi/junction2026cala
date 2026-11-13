@@ -36,6 +36,21 @@ export async function render(ctx) {
     $('#viewBox').innerHTML = `<div class="card state"><b>No perimeter yet</b><span>${ctx.store.portfolio?.building ? 'Still mapping your companies. Check back in a minute.' : 'Add companies to your portfolio to map who is around them.'}</span><a class="btn" href="#/">Go to start</a></div>`;
     return;
   }
+  if (data.partial) {
+    const st = data.status || [];
+    const waiting = st.filter(x => x.status === 'mapping');
+    $('#mapBuild')?.remove();
+    $('#stats').insertAdjacentHTML('beforebegin', `<div class="card buildbar in" id="mapBuild" aria-live="polite"><span class="spin" aria-hidden="true"></span><span class="grow">${waiting.length ? `Still mapping ${plural(waiting.length, 'company', 'companies')}` : 'Reading rivals, screening news and sanctions'}</span><span class="meta">The map fills in as Cala answers</span></div>`);
+    const sig = st.map(x => x.status).join();
+    const pt = setInterval(async () => {
+      try {
+        const d = await api.perimeter();
+        if (!ctx.isCurrent()) return clearInterval(pt);
+        if (!d.partial || (d.status || []).map(x => x.status).join() !== sig) { clearInterval(pt); render(ctx); }
+      } catch {}
+    }, 4000);
+    ctx._pollStop = () => clearInterval(pt);
+  }
   $('#mapSub').textContent = `Everything around your ${plural(cos.length, 'company', 'companies')}, mapped from Cala. Blue means it touches more than one of them.`;
   const statList = [[st.rivals, 'Rivals'], [st.investors, 'Investors'], [st.people, 'Founders, execs, board'], [st.countries, 'Countries'], [st.entities, 'Entities screened'], [st.facts, 'Cala facts, each sourced']];
   $('#stats').innerHTML = statList.map(([n, l]) => `<div class="stat"><b data-count="${n ?? 0}">0</b><span>${l}</span></div>`).join('');
@@ -59,7 +74,8 @@ export async function render(ctx) {
         }
       }
     } else {
-      box.innerHTML = `<h2 class="h">Who is around each company</h2><div class="card in">${lanesHTML(cos)}</div>`;
+      const waiting = (data.status || []).filter(x => x.status === 'mapping');
+      box.innerHTML = `<h2 class="h">Who is around each company</h2><div class="card in">${lanesHTML(cos)}${waiting.map(() => `<div class="lane" aria-hidden="true"><div class="co"><span class="sk" style="height:16px;width:110px;display:block"></span><span class="sk sk-line" style="width:80px;display:block;margin-top:6px"></span></div>${[0, 1, 2].map(() => `<div class="chips"><span class="sk" style="height:28px;width:90px;border-radius:99px"></span><span class="sk" style="height:28px;width:70px;border-radius:99px"></span></div>`).join('')}</div>`).join('')}</div>`;
     }
   }
   $$('[data-v]').forEach(b => b.onclick = () => setView(b.dataset.v));
@@ -83,7 +99,7 @@ export async function render(ctx) {
     const kind = /board/i.test(s.kind) ? 'overlap_board' : /talent/i.test(s.kind) ? 'hiring' : 'overlap_investor';
     openOverlap({ ...s, kind, title: s.text });
   });
-  ctx.onCleanup(() => graph?.destroy());
+  ctx.onCleanup(() => { graph?.destroy(); ctx._pollStop?.(); });
 }
 
 // Turn entity names inside signal text into clickable entity links.

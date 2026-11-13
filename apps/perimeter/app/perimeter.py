@@ -48,13 +48,40 @@ async def build_company(eid: str, rival: bool = False) -> dict | None:
 async def build(portfolio_ids: list[str], progress=None) -> dict:
     t0 = datetime.now(timezone.utc)
 
-    def say(msg):
+    status: dict[str, dict] = {i: {"id": i, "name": None, "status": "mapping"} for i in portfolio_ids}
+
+    def say(msg, partial=None):
         log.info(msg)
         if progress:
-            progress(msg)
+            try:
+                progress(msg, partial)
+            except TypeError:
+                progress(msg)
+
+    def publish(port_done: list[dict], rivals_done: dict[str, dict]):
+        """Partial perimeter/feed from what has landed so far, so pages render before the build finishes."""
+        try:
+            part = compute([{**c, "rivals": c.get("rivals", [])} for c in port_done], rivals_done, {}, {}, {}, {})
+        except Exception:
+            log.exception("partial compute failed")
+            return
+        part["status"] = list(status.values())
+        say(f"{sum(s['status'] != 'mapping' for s in status.values())} of {len(status)} companies", part)
 
     say("portfolio")
-    port = [c for c in await asyncio.gather(*[build_company(i) for i in portfolio_ids]) if c]
+    # first hop per company (profile, people, investors, events); publish each as it lands
+    by_id: dict[str, dict] = {}
+
+    async def first_hop(i):
+        c = await build_company(i)
+        if c:
+            by_id[i] = c
+            status[i].update(name=c["name"], status="ready")
+        else:
+            status.pop(i, None)
+        publish([by_id[x] for x in portfolio_ids if x in by_id], {})
+    await asyncio.gather(*[first_hop(i) for i in portfolio_ids])
+    port = [by_id[i] for i in portfolio_ids if i in by_id]
     port_ids = {c["id"] for c in port}
 
     say("rivals")
@@ -70,6 +97,9 @@ async def build(portfolio_ids: list[str], progress=None) -> dict:
         c["rivals_in_portfolio"] = [r for r in rl if r["id"] in port_ids]
     rival_ids = list(dict.fromkeys(r["id"] for c in port for r in c["rivals"]))
     rivals = {c["id"]: c for c in await asyncio.gather(*[build_company(i, rival=True) for i in rival_ids]) if c}
+    for s in status.values():
+        s["status"] = "rivals"
+    publish(port, rivals)
     for c in port:
         for r in c["rivals"]:
             if r["id"] in rivals and kg.similarity(r["name"], rivals[r["id"]]["name"]) >= 0.6:
@@ -442,7 +472,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
             "rivals": [{"id": r["id"], "name": rivals[r["id"]]["name"], "type": "Company",
                         "sub": r.get("sub"), "confidence": r.get("confidence")}
                        for r in c["rivals"] if r["id"] in rivals],
-            "investors": [{k: v for k, v in {"id": i["id"], "name": i["name"], "type": i["type"], "sub": i["sub"],
+            "investors": [{k: v for k, v in {"id": i["id"], "name": short_company(i["name"]), "type": i["type"], "sub": i["sub"],
                                              "shared_with": i.get("shared_with")}.items() if v is not None}
                           for i in c["investors"][:20]],
             "people": [{k: v for k, v in {"id": p["id"], "name": p["name"], "type": "Person", "role": p["role"],

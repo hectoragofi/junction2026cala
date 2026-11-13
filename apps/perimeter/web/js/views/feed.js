@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { refreshPortfolio } from '../app.js';
 import { pathHTML, openOverlap, installPathHandlers } from '../overlap.js';
 import { $, $$, esc, srcChips, entLink, sevPill, statusPill, openMenu, openModal, toast, parseDate, fmtDate, trapFocus, plural } from '../ui.js';
 
@@ -70,6 +71,7 @@ export async function render(ctx) {
 
   app.innerHTML = `<main class="main">
     <div class="ph in"><h1>${greeting()}</h1><p id="sum"><span class="sk sk-line" style="display:inline-block;width:340px"></span></p></div>
+    <div id="buildBar"></div>
     <div class="filters in" id="filters" role="toolbar" aria-label="Filter feed"></div>
     <div id="feed" class="sec" style="gap:28px">${[0, 1, 2].map(() => `<div class="card fcard"><div class="sk sk-line" style="width:160px"></div><div class="sk" style="height:18px;width:85%"></div><div class="sk sk-line" style="width:60%"></div></div>`).join('')}</div>
   </main>`;
@@ -83,7 +85,7 @@ export async function render(ctx) {
     return;
   }
   if (!ctx.isCurrent()) return;
-  $('#sum').textContent = data.summary || '';
+  $('#sum').textContent = data.partial ? 'Here is what Cala has so far. The rest fills in as it lands.' : data.summary || '';
 
   const items = () => [...(data.items || [])].sort((a, b) => (b.date || '').localeCompare(a.date || '')).filter(i => !hidden.has(i.id)).map(i => confirmed.has(i.id) ? { ...i, status: 'confirmed' } : i);
   function drawFilters() {
@@ -102,6 +104,11 @@ export async function render(ctx) {
     drawFilters();
     const list = items().filter(i => (filter.cat === 'All' || i.category === filter.cat) && (!filter.company || i.company?.id === filter.company));
     const feed = $('#feed');
+    drawBuild();
+    if (!list.length && data.partial) {
+      feed.innerHTML = skCards(2);
+      return;
+    }
     if (!list.length) {
       const nAll = items().length;
       feed.innerHTML = `<div class="card state in"><span class="ic">✓</span><b>All quiet</b><span>${nAll ? 'Nothing matches this filter.' : `Watching ${plural(companies.length, 'company', 'companies')}. Nothing has changed around them yet.`}</span>${nAll ? '<button type="button" class="btn" id="clr">Clear filters</button>' : ''}</div>`;
@@ -113,8 +120,30 @@ export async function render(ctx) {
     feed.innerHTML = [...groups].map(([name, its]) => {
       const cards = its.filter(isCard), rows = its.filter(i => !isCard(i));
       return `<section class="sec"><h2 class="h">${esc(name)}</h2><div class="sec stagger">${cards.map(cardHTML).join('')}${rows.length ? `<div class="card">${rows.map(rowHTML).join('')}</div>` : ''}</div></section>`;
-    }).join('');
+    }).join('') + (data.partial ? skCards(1) : '');
   }
+  // First build of a new portfolio: render what has landed, keep polling until the build finishes.
+  function drawBuild() {
+    const bar = $('#buildBar'); if (!bar) return;
+    if (!data.partial) { bar.innerHTML = ''; return; }
+    const st = data.status || [];
+    const ready = st.filter(s => s.status !== 'mapping').length;
+    const rivals = st.length && st.every(s => s.status === 'rivals');
+    bar.innerHTML = `<div class="card buildbar in" aria-live="polite"><span class="spin" aria-hidden="true"></span><span class="grow">${rivals ? 'Reading rivals, screening news and sanctions' : `Mapping your companies · ${ready} of ${st.length || companies.length} ready`}</span><span class="meta">Updates as Cala answers</span></div>`;
+  }
+  let pollT;
+  async function poll() {
+    try {
+      const d = await api.feed();
+      if (!ctx.isCurrent()) return;
+      const was = data.items?.length;
+      data = d; $('#sum').textContent = d.partial ? 'Here is what Cala has so far. The rest fills in as it lands.' : d.summary || '';
+      if (!d.partial) { draw(); toast('Perimeter ready'); refreshPortfolio(); return; }
+      if (d.items?.length !== was) draw(); else drawBuild();
+    } catch {}
+    pollT = setTimeout(poll, 3500);
+  }
+  if (data.partial) { pollT = setTimeout(poll, 2500); ctx.onCleanup(() => clearTimeout(pollT)); }
   draw();
 
   installPathHandlers();
@@ -134,6 +163,8 @@ export async function render(ctx) {
     }
   });
 }
+
+const skCards = n => Array.from({ length: n }, () => `<div class="card fcard" aria-hidden="true"><div class="lbls"><span class="sk" style="height:24px;width:96px;border-radius:99px"></span><span class="sk sk-line" style="width:160px"></span></div><div class="sk" style="height:18px;width:80%"></div><div class="sk sk-line" style="width:95%"></div><div class="sk sk-line" style="width:60%"></div></div>`).join('');
 
 async function openDraft(item) {
   if (!item) return;

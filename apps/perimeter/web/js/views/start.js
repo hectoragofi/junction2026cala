@@ -158,6 +158,8 @@ export function renderBuilding(ctx) {
       }
       const s = Math.round((Date.now() - started) / 1000);
       if ($('#bTime') && s > 8) $('#bTime').textContent = s < 60 ? `${s} s · usually under a minute` : `${Math.floor(s / 60)} min ${s % 60} s · a first build reads a lot of the graph. You can leave this page.`;
+      // first companies are mapped: show the feed with what exists, it keeps filling in
+      if (p.building && (p.status || []).some(x => x.status !== 'mapping')) { clearInterval(lt); ctx.go('#/'); return; }
       if (p.progress && $('#bLine')) { clearInterval(lt); $('#bLine').textContent = /^[a-z ]+$/.test(p.progress) ? `Mapping ${p.progress}…` : p.progress; }
       if (!p.building && p.error) {
         clearInterval(lt);

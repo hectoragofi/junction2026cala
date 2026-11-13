@@ -49,13 +49,14 @@ export const api = {
   ask: q => req('POST', '/api/ask', { q }),
   draft: item_id => req('POST', '/api/draft', { item_id }),
   entity: id => req('GET', `/api/entity/${encodeURIComponent(id)}`),
-  // SSE check stream. handlers: {step, result, error}. Returns a close() fn.
+  // SSE check stream. handlers: {step, partial, result, error}. Returns a close() fn.
   check(q, h) {
     if (mock) return mock.checkStream(q, h);
     const es = new EventSource(`/api/check/stream?q=${encodeURIComponent(q)}`);
     let finished = false;
     const parse = ev => { try { return JSON.parse(ev.data); } catch { return {}; } };
     es.addEventListener('step', ev => h.step?.(parse(ev)));
+    es.addEventListener('partial', ev => h.partial?.(parse(ev)));
     es.addEventListener('result', ev => { finished = true; es.close(); h.result?.(parse(ev)); });
     es.addEventListener('error', ev => {
       if (finished) return;

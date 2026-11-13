@@ -59,7 +59,7 @@ async function route() {
       renderChrome('start');
       return (await import('./views/start.js')).render(ctx);
     }
-    if (pf.building) {
+    if (pf.building && !(pf.status || []).some(x => x.status !== 'mapping')) {
       renderChrome('feed');
       return (await import('./views/start.js')).renderBuilding(ctx);
     }
