@@ -600,7 +600,9 @@ NEG_RE = re.compile(r"\bno (other |further |additional |major |specific |known |
                     r"(adverse|sanction|lawsuit|regulatory|record|evidence|fine|enforcement|investigation|litigation"
                     r"|legal|reports?|news|issues?|findings?)|not (been )?(mentioned|identified|found|reported)"
                     r"|none (were |was )?(found|identified)", re.I)
-_MONEY = re.compile(r"(£|€|\$)\s?[\d.,]+\s?(million|billion|bn|m|k)?", re.I)
+_MONEY = re.compile(r"(?:(?:£|€|\$|eur|usd|gbp)\s?(?P<a>\d[\d.,]*)\s?(?P<u>million|mln|billion|bn|m|k)?\b"
+                    r"|(?P<b>\d[\d.,]*)\s?(?P<v>million|mln|billion|bn|m)?\s?(?:eur|euros?|usd|dollars|gbp|pounds)\b)", re.I)
+_MULT = {"k": 1e3, "m": 1e6, "mln": 1e6, "million": 1e6, "bn": 1e9, "billion": 1e9}
 
 
 def _ks_sources(refs: list[dict]) -> list[dict]:
@@ -629,12 +631,27 @@ def _stems(t: str) -> set[str]:
 
 
 def _money(t: str) -> set[str]:
-    return {m.group(0).replace(" ", "").lower() for m in _MONEY.finditer(t)}
+    """Amounts as rounded numbers, so "€9.2 million", "9.2 Million EUR" and "€9.2m" compare equal."""
+    out = set()
+    for m in _MONEY.finditer(t):
+        num, unit = (m.group("a"), m.group("u")) if m.group("a") else (m.group("b"), m.group("v"))
+        num = num.rstrip(".,")
+        num = num.replace(",", "") if re.search(r",\d{3}\b", num) else num.replace(",", ".")
+        try:
+            v = float(num) * _MULT.get((unit or "").lower(), 1)
+        except ValueError:
+            continue
+        if v >= 1000:
+            out.add(f"{v:.3g}")
+    return out
 
 
 def _domain(url: str | None) -> str | None:
     m = re.match(r"https?://(?:www\.)?([^/]+)", url or "")
     return m.group(1) if m else None
+
+
+_GENERIC = {"milli", "billi", "repor", "compa", "finte", "group", "holdi", "says", "news"}
 
 
 def _relevant_sources(step_refs: list[dict], all_ctx: list[dict], ent: str, title: str, body: str,
@@ -654,14 +671,21 @@ def _relevant_sources(step_refs: list[dict], all_ctx: list[dict], ent: str, titl
         from_step = id(k) in step_ids
         snip = k.get("content") or ""
         ls = strip_accents(snip.lower())
-        ov = len(_stems(snip) & key)
-        snip_ok = ent in ls and (bool(money & _money(snip)) or ov >= (3 if from_step else 5))
+        # judge the snippet only around its mentions of the company, so a sidebar link on an unrelated page
+        # ("More in Cloud Security: Revolut outage ...") never backs a finding
+        near = " ".join(ls[max(0, m.start() - 250):m.end() + 250] for m in re.finditer(re.escape(ent), ls))
+        ov = len(_stems(near) & key)
+        snip_ok = bool(near) and (bool(money & _money(near)) or ov >= (4 if from_step else 5))
         for o in k.get("origins") or []:
             d, s = o.get("document") or {}, o.get("source") or {}
             name = (d.get("name") or s.get("name") or "").strip()
             url = d.get("url") or s.get("url")
             hay = strip_accents(f"{name} {url or ''}".lower())
-            title_ok = ent in hay and (from_step or snip_ok or len(_stems(name) & key) >= 1)
+            # a headline naming the company is about one event: show it only when it is this finding's event
+            nm_money = _money(name)
+            clash = bool(nm_money) and not nm_money & money  # a fine headline backs only the same amount
+            nm_ov = len((_stems(name) - _GENERIC) & key)
+            title_ok = ent in hay and not clash and (nm_ov >= 2 or bool(nm_money & money))
             if not (title_ok or snip_ok):
                 continue
             disp = name if title_ok and name else (_domain(url) or s.get("name") or name)
@@ -777,6 +801,35 @@ def extract_date_p(text: str) -> str | None:
     return d[:7] if d else None
 
 
+_MOJI = re.compile("[ÂÃâ][-¿‚-›€™ŒœŠšŸŽžˆ˜]")
+
+
+def fix_mojibake(t: str) -> str:
+    """UTF-8 text that was decoded as cp1252 somewhere upstream ("â‚¬390,000" -> "€390,000")."""
+    if not t or not _MOJI.search(t):
+        return t
+    try:
+        return t.encode("cp1252").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        # mixed text: repair run by run
+        def one(m):
+            try:
+                return m.group(0).encode("cp1252").decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                return m.group(0)
+        return re.sub("[Â-ô][-¿Œ-™]{1,3}", one, t)
+
+
+def _demoji(x):
+    if isinstance(x, str):
+        return fix_mojibake(x)
+    if isinstance(x, list):
+        return [_demoji(v) for v in x]
+    if isinstance(x, dict):
+        return {k: _demoji(v) for k, v in x.items()}
+    return x
+
+
 def parse_screen(res: dict, name: str) -> dict:
     """Conservative parse of a knowledge_search screening answer into findings.
 
@@ -784,6 +837,7 @@ def parse_screen(res: dict, name: str) -> dict:
     explainability steps that talk about it; falls back to the steps themselves. Anything phrased as a
     negative ("no other fines…"), not about the company, or without a matching source is dropped.
     """
+    res = _demoji(res or {})
     content = (res or {}).get("content") or ""
     ctx = {k["id"]: k for k in (res or {}).get("context") or [] if k.get("id")}
     all_ctx = list(ctx.values())

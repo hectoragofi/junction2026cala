@@ -374,6 +374,19 @@ class DraftIn(BaseModel):
     item_id: str
 
 
+def _human_date(d: str) -> str:
+    """'2026-08-25' -> '25 August 2026', '2026-08' -> 'August 2026', '2026' stays."""
+    try:
+        if len(d) >= 10:
+            x = datetime.strptime(d[:10], "%Y-%m-%d")
+            return f"{x.day} {x:%B %Y}"
+        if len(d) == 7:
+            return datetime.strptime(d, "%Y-%m").strftime("%B %Y")
+    except ValueError:
+        pass
+    return d
+
+
 def _template_note(it: dict) -> dict:
     company = it["company"]["name"]
     subj = it["title"]
@@ -381,7 +394,7 @@ def _template_note(it: dict) -> dict:
     lines.append(f"Flagging something from our portfolio watch: {it['title'].rstrip('.')}.")
     if it.get("body"):
         lines += ["", it["body"].strip()]
-    when = f" (dated {it['date']})" if it.get("date") else ""
+    when = f" ({_human_date(it['date'])})" if it.get("date") else ""
     status = {"confirmed": "Cala lists this as a sourced fact", "reported": "This was reported in the press",
               "possible": "This is a possible match we have not confirmed"}.get(it.get("status"), "")
     if status:

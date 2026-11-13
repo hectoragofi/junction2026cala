@@ -86,6 +86,7 @@ function run(ctx, q) {
       }
       const main = $('main');
       main.querySelectorAll('.sec[aria-hidden], .step.pending').forEach(x => x.remove());
+      if (notFound) $('#steps')?.closest('.card')?.remove();
       main.insertAdjacentHTML('beforeend', notFound
         ? `<div class="card scard in"><span class="cap">Not found</span><span>“${esc(q)}” isn’t in Cala.</span><button type="button" class="btn" style="align-self:flex-start" id="again">Try another spelling</button></div>`
         : `<div class="card scard in"><span class="cap">Source error</span><span>${esc(msg)}</span><div style="display:flex;gap:8px"><button type="button" class="btn" id="retry">Retry</button><button type="button" class="btn ghost" id="again">Check another company</button></div></div>`);

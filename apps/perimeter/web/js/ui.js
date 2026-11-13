@@ -119,7 +119,10 @@ function place(el, anchor) {
   el.style.left = left + 'px'; el.style.top = Math.max(12, top) + 'px';
 }
 export function openPopover(anchor, html, { cls = 'pop', role = 'dialog', label = 'Details' } = {}) {
-  const same = layer && layer.anchor === anchor;
+  // a chip inside an open popover (e.g. "+N more" list) opens its detail in place of that popover, at the same spot
+  const inner = layer && layer.el.contains(anchor);
+  if (inner) { layer.restore = false; anchor = layer.anchor; }
+  const same = !inner && layer && layer.anchor === anchor;
   closeLayer();
   if (same) return null;
   const el = document.createElement('div');
@@ -234,6 +237,34 @@ export function closeSheet() {
   p?.focus?.({ preventScroll: true });
 }
 const REL_LABELS = { rivals: 'Rivals', competitors: 'Rivals', investors: 'Investors', people: 'People', founders: 'Founders', board: 'Board', executives: 'Executives', subsidiaries: 'Subsidiaries', parents: 'Parents', portfolio: 'Portfolio', investments: 'Investments', companies: 'Companies', employers: 'Worked at' };
+// Cala relation keys ("IS_CEO_OF", "DESIGNED_BY (incoming)") as plain section headings: [outgoing, incoming]
+const CALA_RELS = {
+  PARTICIPATES_IN_CORPORATE_EVENT: ['Corporate events', 'Participants'], PARTICIPATES_IN_FUNDING_ROUND: ['Funding rounds', 'Participants'],
+  INVESTED_IN: ['Invested in', 'Investors'], WORKS_AT: ['Works at', 'People'], FOUNDED: ['Founded', 'Founders'],
+  IS_MEMBER_OF: ['Member of', 'Members'], IS_CEO_OF: ['CEO of', 'CEO'], IS_CTO_OF: ['CTO of', 'CTO'], IS_COO_OF: ['COO of', 'COO'],
+  IS_CFO_OF: ['CFO of', 'CFO'], IS_CCO_OF: ['CCO of', 'CCO'], IS_CMO_OF: ['CMO of', 'CMO'], IS_CSO_OF: ['CSO of', 'CSO'], IS_CRO_OF: ['CRO of', 'CRO'],
+  IS_CHAIRMAN_OF: ['Chair of', 'Chair'], IS_PRESIDENT_OF: ['President of', 'President'], IS_VICEPRESIDENT_OF: ['Vice president of', 'Vice presidents'],
+  IS_MANAGING_DIRECTOR_OF: ['Managing director of', 'Managing directors'], IS_EXECUTIVE_OF: ['Executive at', 'Executives'],
+  IS_BOARD_MEMBER_OF: ['Board seats', 'Board'], IS_CONTROL_PERSON_OF: ['Controls', 'Control persons'],
+  IS_BENEFICIARY_OWNER_OF: ['Beneficial owner of', 'Beneficial owners'], IS_DIRECT_PARENT_OF: ['Subsidiaries', 'Parent'],
+  IS_ULTIMATE_PARENT_OF: ['Ultimately owns', 'Ultimate parent'], IS_SUBSIDIARY_OF: ['Parent', 'Subsidiaries'],
+  OPERATES_IN_INDUSTRY: ['Industries', 'Companies'], HAS_NATIONALITY: ['Nationality', 'Nationals'],
+  IS_REGISTERED_IN: ['Registered in', 'Registered companies'], HAS_HEADQUARTERS_IN: ['Headquarters', 'Headquartered here'],
+  HAS_PRESENCE_IN: ['Present in', 'Present here'], HAS_OPERATIONAL_PRESENCE_IN: ['Operates in', 'Operating here'],
+  LISTED_ON: ['Listed on', 'Listed companies'], TRADED_ON: ['Traded on', 'Traded here'], DESIGNED_BY: ['Designed by', 'Designs'],
+  CREATED_BY: ['Created by', 'Created'], OPERATED_BY: ['Operated by', 'Operates'], MANUFACTURED_BY: ['Made by', 'Makes'],
+  FEATURED_IN: ['Featured in', 'Features'], SPOKE_AT: ['Spoke at', 'Speakers'], STUDIED_AT: ['Studied at', 'Alumni'],
+  RECEIVED_AWARD: ['Awards', 'Recipients'], PUBLISHED_BY: ['Published by', 'Publishes'], GRANTED_BY: ['Granted by', 'Granted'],
+  HAS_DOMAIN_NAME: ['Domains', 'Owner'],
+};
+function relLabel(k) {
+  if (REL_LABELS[k]) return REL_LABELS[k];
+  const inc = / \(incoming\)$/.test(k), key = k.replace(/ \(incoming\)$/, '');
+  if (CALA_RELS[key]) return CALA_RELS[key][inc ? 1 : 0];
+  const t = key.replace(/^(IS|HAS)_/, '').replace(/_OF$/, '').replace(/_/g, ' ').toLowerCase();
+  return (inc ? 'Linked: ' : '') + t.replace(/^\w/, c => c.toUpperCase());
+}
+const isoish = v => /^\d{4}-\d{2}(-\d{2})?(T[\d:.]+Z?)?$/.test(v);
 export async function openEntity(ref) {
   closeLayer(); hideTip();
   const prev = document.activeElement;
@@ -258,8 +289,8 @@ export async function openEntity(ref) {
     const rels = Object.entries(d.relations || {}).filter(([, v]) => v && v.length);
     el.innerHTML = head({ ...ref, ...d, sub: ref.sub }) + `<div class="sheet-b stagger">
       ${d.description ? `<p class="muted">${esc(d.description)}</p>` : ''}
-      ${facts.length ? `<section class="sec"><h3 class="h">Facts</h3><dl class="kv">${facts.map(f => `<dt>${esc(f.label)}</dt><dd><span>${esc(f.value)}</span>${srcChips(f.sources, 1)}</dd>`).join('')}</dl></section>` : ''}
-      ${rels.map(([k, v]) => `<section class="sec"><h3 class="h">${esc(REL_LABELS[k] || k.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase()))} <span style="color:var(--line-2)">· ${v.length}</span></h3><div class="chips">${v.slice(0, 24).map(entChip).join('')}</div></section>`).join('')}
+      ${facts.length ? `<section class="sec"><h3 class="h">Facts</h3><dl class="kv">${facts.map(f => `<dt>${esc(f.label)}</dt><dd><span>${esc(isoish(f.value) ? fmtDate(f.value.slice(0, 10), { year: true }) : f.value)}</span>${srcChips(f.sources, 1)}</dd>`).join('')}</dl></section>` : ''}
+      ${rels.map(([k, v]) => `<section class="sec"><h3 class="h">${esc(relLabel(k))} <span style="color:var(--line-2)">· ${v.length}</span></h3><div class="chips">${v.slice(0, 24).map(entChip).join('')}</div></section>`).join('')}
       ${!facts.length && !rels.length && !d.description ? `<div class="state"><b>Not much on file</b><span>Cala has no facts or relations for this entity yet.</span></div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${(d.type || ref.type || 'Company').toLowerCase() !== 'person' ? `<a class="btn dark lg" href="#/check/${encodeURIComponent(d.id || ref.id)}" data-close-sheet>Run check</a>` : ''}

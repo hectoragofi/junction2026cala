@@ -4,12 +4,13 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 from datetime import datetime, timezone
 
 from . import kg
 from .kg import (clean_name, company_basics, company_events, entity_ref, event_label, fetch_entity,
                  investors_of, merge_sources, months_ago, norm_key, people_of, safe_entity, same_org,
-                 short_company)
+                 short_company, strip_accents)
 
 log = logging.getLogger("perimeter")
 
@@ -403,6 +404,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                 tgt_id = find_company(tgt["id"], tgt["name"]) if tgt else None
                 an = short_company(acq["name"]) if acq else c["name"]
                 tn = short_company(tgt["name"]) if tgt else None
+                tn = _as_reported(tn, ev["sources"])
                 amt = f" for {ev['amount']}" if ev.get("amount") else ""
                 verb = "agreed to acquire" if "expected" in (ev.get("description") or "").lower() else "acquired"
                 title = f"{an} {verb} {tn}{amt}" if tn else f"{an}: M&A{amt}"
@@ -513,6 +515,18 @@ def _finding_item(f: dict, company: dict, subject: dict | None) -> dict:
     if subject:
         it["subject"] = subject
     return it
+
+
+def _as_reported(name: str | None, sources: list[dict]) -> str | None:
+    """Name a deal party the way the sources do: when every headline says "Orum" but Cala's entity is
+    "Orum Occhiali", use the shorter form."""
+    if not name or " " not in name:
+        return name
+    heads = [strip_accents((s.get("name") or "").lower()) for s in sources if s.get("name") and " " in s["name"]]
+    full, first = strip_accents(name.lower()), strip_accents(name.split(" ")[0].lower())
+    if heads and not any(full in h for h in heads) and all(re.search(rf"\b{re.escape(first)}\b", h) for h in heads):
+        return name.split(" ")[0]
+    return name
 
 
 def _round_phrase(label: str | None) -> str:
