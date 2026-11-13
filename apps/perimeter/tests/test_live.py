@@ -23,6 +23,9 @@ import httpx  # noqa: E402
 from app import live, main  # noqa: E402
 from app.contextdev import ContextDev  # noqa: E402
 
+from starlette.requests import Request  # noqa: E402
+
+REQ = Request({"type": "http", "headers": [], "query_string": b""})   # a visitor with no profile: the shared demo
 NOW = datetime.now(timezone.utc)
 TODAY = NOW.date().isoformat()
 
@@ -220,19 +223,19 @@ class SweepAndFeed(unittest.TestCase):
         self.old_ctx = live.ctx
         live.ctx = ContextDev(key="k-test", transport=httpx.MockTransport(handler))
         live.LIVE.update({"items": {}, "updated_at": None, "last_error": None, "targets": 0})
-        main.STATE["built"] = BUILT
+        main.demo_space().state["built"] = BUILT
 
     def tearDown(self):
         asyncio.run(live.ctx.close())
         live.ctx = self.old_ctx
-        main.STATE["built"] = None
+        main.demo_space().state["built"] = None
 
     def test_sweep_stores_items_once_and_feed_shows_today_first(self):
         async def go():
             first = await live.sweep(BUILT, force=True)
             second = await live.sweep(BUILT, force=True)
             throttled = await live.sweep(BUILT)
-            return first, second, throttled, await main.feed()
+            return first, second, throttled, await main.feed(REQ)
 
         first, second, throttled, feed = asyncio.run(go())
         self.assertEqual(first["new"], 2)          # one story (deduplicated by story_id) + one page change
@@ -260,7 +263,7 @@ class SweepAndFeed(unittest.TestCase):
     def test_without_a_key_the_feed_is_untouched(self):
         live.ctx = ContextDev(key="")
         self.assertEqual(asyncio.run(live.sweep(BUILT, force=True)), {"enabled": False, "new": 0})
-        feed = asyncio.run(main.feed())
+        feed = asyncio.run(main.feed(REQ))
         self.assertEqual(feed["items"], BUILT["feed"]["items"])
         self.assertEqual(feed["summary"], BUILT["feed"]["summary"])
         self.assertFalse(feed["live"]["enabled"])
