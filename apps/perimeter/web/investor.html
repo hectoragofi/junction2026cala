@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0C">
+<title>Perimeter</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0B0C;--card:#151517;--raise:#1C1C1F;--line:#232327;--ink:#F4F4F5;--muted:#A0A0AA;--faint:#6B6B75;
+  --red:#FF6B5E;--red-bg:#2A1513;--green:#4ADE80;--green-bg:#112318;--accent:#F4F4F5;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;scrollbar-gutter:stable;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+main{max-width:560px;margin:0 auto;padding:14px 16px 96px}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0;text-align:left}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:10px}
+h1,h2,p{margin:0}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:10px;height:44px;margin-bottom:22px}
+.brand{font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand i{width:14px;height:14px;border-radius:5px;border:2px solid var(--ink);display:block}
+.bar .grow{flex:1}
+.pill{height:34px;padding:0 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s,color .15s}
+.pill:hover{color:var(--ink);border-color:#3A3A40}
+.pill b{color:var(--ink);font-weight:500}
+
+/* home */
+.hero{padding:13vh 0 0}
+.hero h1{font-size:clamp(30px,8vw,40px);line-height:1.08;font-weight:600;letter-spacing:-.03em}
+.hero p{color:var(--muted);margin-top:12px;font-size:16px;max-width:30em}
+.field{position:relative;margin-top:26px}
+.field input{width:100%;height:54px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:16px;padding:0 16px 0 46px;outline:none;transition:border-color .15s}
+.field input::placeholder{color:var(--faint)}
+.field input:focus{border-color:#4A4A52}
+.field svg{position:absolute;left:16px;top:17px;color:var(--faint);pointer-events:none}
+.label{font-size:12px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.07em;margin:30px 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.label span+span{letter-spacing:0;text-transform:none}
+
+/* lists */
+.list{background:var(--card);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;width:100%;position:relative}
+.row+.row::before,.row+.srcs+.row::before{content:"";position:absolute;left:62px;right:0;top:0;height:1px;background:var(--line)}
+button.row,a.row{transition:background .12s}
+button.row:hover,a.row:hover{background:var(--raise)}
+.av{width:36px;height:36px;border-radius:10px;background:var(--raise);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--muted);flex-shrink:0;letter-spacing:.02em}
+.row:hover .av{background:#26262A}
+.tx{flex:1;min-width:0}
+.t1{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t2{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rt{font-size:13px;color:var(--muted);white-space:nowrap;text-align:right}
+.rt b{display:block;color:var(--ink);font-weight:500;font-size:15px}
+.chev{color:var(--faint);flex-shrink:0}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--faint)}
+.dot.bad{background:var(--red)}.dot.ok{background:var(--green)}
+.srcs{padding:2px 14px 12px 62px;font-size:13px}
+.srcs a{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 0}
+.srcs a:hover{color:var(--ink)}
+.more{width:100%;text-align:center;padding:12px;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+.more:hover{color:var(--ink)}
+.empty{padding:16px 14px;color:var(--muted);font-size:14px}
+
+/* investor page */
+.head{display:flex;gap:14px;align-items:flex-start}
+.head .av{width:52px;height:52px;border-radius:14px;font-size:17px;background:var(--card)}
+.head h1{font-size:26px;line-height:1.15;font-weight:600;letter-spacing:-.02em}
+.head p{color:var(--muted);font-size:14px;margin-top:2px}
+.verdict{margin-top:20px;border-radius:16px;padding:16px;background:var(--card);display:block;width:100%}
+.verdict .k{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:flex;align-items:center;gap:8px}
+.verdict .v{font-size:19px;line-height:1.3;font-weight:600;letter-spacing:-.01em;margin-top:8px}
+.verdict .s{font-size:14px;color:var(--muted);margin-top:6px}
+.verdict.bad{background:var(--red-bg)}.verdict.bad .k{color:var(--red)}
+.verdict.ok{background:var(--green-bg)}.verdict.ok .k{color:var(--green)}
+.verdict .srcs{padding:10px 0 0}
+.verdict form{display:flex;gap:8px;margin-top:12px}
+.verdict input{flex:1;min-width:0;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;padding:0 12px;outline:none}
+.verdict input:focus{border-color:#4A4A52}
+.btn{height:42px;padding:0 16px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:600;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.stat{background:var(--card);border-radius:16px;padding:14px}
+.stat b{display:block;white-space:nowrap;font-size:clamp(17px,5.2vw,22px);font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.stat span{font-size:12px;color:var(--muted)}
+.chart{background:var(--card);border-radius:16px;padding:16px 14px 12px;display:flex;align-items:flex-end;gap:8px;height:128px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;font-size:12px;color:var(--faint)}
+.bar-col i{display:block;width:100%;max-width:44px;border-radius:6px 6px 2px 2px;background:#3A3A41;min-height:2px;transform-origin:bottom;animation:grow .5s var(--ease) both}
+.bar-col:last-child i{background:var(--ink)}
+.bar-col em{font-style:normal;color:var(--muted)}
+@keyframes grow{from{transform:scaleY(0)}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 12px;border-radius:999px;background:var(--card);font-size:14px;display:inline-flex;gap:8px;align-items:center;transition:background .12s}
+button.chip:hover{background:var(--raise)}
+.chip.bad{background:var(--red-bg);color:var(--red)}
+.chip small{color:var(--faint);font-size:12px}
+.foot{margin-top:36px;color:var(--faint);font-size:12px;text-align:center;line-height:1.6}
+
+/* skeleton + states */
+.sk{border-radius:8px;background:linear-gradient(90deg,var(--card) 25%,var(--raise) 50%,var(--card) 75%);background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.fade{animation:fade .3s var(--ease) both}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}}
+.err{background:var(--card);border-radius:16px;padding:16px;color:var(--muted);font-size:14px}
+.err button{color:var(--ink);font-weight:500;margin-left:6px;text-decoration:underline}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (min-width:700px){main{padding-top:28px}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const $ = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const api = async path => {
+  const r = await fetch('/api/investor' + path);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Something went wrong');
+  return r.json();
+};
+const initials = n => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = d => d ? `${MONTHS[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : '';
+const srcList = list => (list || []).slice(0, 4).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}${s.date ? ' · ' + esc(fmtDate(s.date)) : ''} ↗</a>`).join('');
+const icon = { search: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  chev: '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>' };
+const skRows = n => `<div class="list">${Array.from({length: n}, () => `<div class="row"><div class="av sk"></div><div class="tx"><div class="sk" style="height:12px;width:${40 + Math.random() * 30}%"></div><div class="sk" style="height:10px;width:${25 + Math.random() * 25}%;margin-top:8px"></div></div></div>`).join('')}</div>`;
+
+let me = store.get('me', '');
+let view = 0; // bumps on every navigation so late responses from an old page are dropped
+
+const bar = () => `<div class="bar"><a class="brand" href="#"><i></i>Perimeter</a><span class="grow"></span>
+  <button class="pill" id="me">${me ? `You: <b>${esc(me)}</b>` : 'Add your company'}</button></div>`;
+function wireBar() {
+  document.getElementById('me').onclick = () => {
+    const v = prompt('Your company. We use it to check whether an investor backs one of your rivals.', me);
+    if (v === null) return;
+    me = v.trim(); store.set('me', me); route();
+  };
+}
+
+/* ---------- home ---------- */
+function home() {
+  const recent = store.get('recent', []);
+  $.innerHTML = `${bar()}<div class="hero fade">
+    <h1>They checked you.<br>Check them.</h1>
+    <p>Look up any investor before the meeting: what they really fund, how active they are, and whether they back your rival.</p>
+    <div class="field">${icon.search}<input id="q" placeholder="Search an investor" autocomplete="off" autofocus></div>
+    <div id="res"></div>
+    ${recent.length ? `<div class="label"><span>Your list</span><span>${recent.length}</span></div>
+    <div class="list">${recent.map(r => `<a class="row" href="#i/${r.id}"><div class="av">${esc(initials(r.name))}</div>
+      <div class="tx"><div class="t1">${esc(r.name)}</div><div class="t2">${esc(r.note || 'Checked')}</div></div>
+      <span class="dot ${r.state || ''}"></span>${icon.chev}</a>`).join('')}</div>` : ''}
+  </div><div class="foot">Every fact comes from Cala's knowledge graph, with its source.</div>`;
+  wireBar();
+  const q = document.getElementById('q'), res = document.getElementById('res');
+  let timer, seq = 0;
+  const run = async () => {
+    const text = q.value.trim(), mine = ++seq;
+    if (text.length < 2) { res.innerHTML = ''; return; }
+    res.innerHTML = `<div class="label"><span>Results</span></div>${skRows(3)}`;
+    try {
+      const { results } = await api('/search?q=' + encodeURIComponent(text));
+      if (mine !== seq) return;
+      res.innerHTML = `<div class="label"><span>Results</span></div><div class="list fade">${results.length
+        ? results.map(r => `<a class="row" href="#i/${r.id}"><div class="av">${esc(initials(r.name))}</div>
+            <div class="tx"><div class="t1">${esc(r.name)}</div><div class="t2">${esc(r.description || '')}</div></div>${icon.chev}</a>`).join('')
+        : `<div class="empty">Cala has no investor called “${esc(text)}”.</div>`}</div>`;
+    } catch (e) {
+      if (mine === seq) res.innerHTML = `<div class="label"><span>Results</span></div><div class="err">${esc(e.message)}</div>`;
+    }
+  };
+  q.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 350); };
+  q.onkeydown = e => { if (e.key === 'Enter') { clearTimeout(timer); run(); } };
+}
+
+/* ---------- investor ---------- */
+function remember(inv, state, note) {
+  const list = store.get('recent', []).filter(r => r.id !== inv.id);
+  list.unshift({ id: inv.id, name: inv.name, state, note });
+  store.set('recent', list.slice(0, 12));
+}
+
+async function investor(id) {
+  const mine = ++view;
+  $.innerHTML = `${bar()}<div class="head"><div class="av sk"></div><div style="flex:1"><div class="sk" style="height:22px;width:45%"></div><div class="sk" style="height:12px;width:70%;margin-top:10px"></div></div></div>
+    <div class="sk" style="height:104px;border-radius:16px;margin-top:20px"></div>
+    <div class="stats">${'<div class="sk" style="height:72px;border-radius:16px"></div>'.repeat(3)}</div>
+    <div class="label"><span>Latest deals</span></div>${skRows(4)}`;
+  wireBar();
+  let inv;
+  try { inv = await api('/' + id); } catch (e) {
+    if (mine !== view) return;
+    $.innerHTML = `${bar()}<div class="err">${esc(e.message)}<button id="retry">Try again</button></div>`;
+    wireBar(); document.getElementById('retry').onclick = route; return;
+  }
+  if (mine !== view) return;
+  const a = inv.activity, max = Math.max(1, ...a.by_year.map(y => y.n));
+  const sub = [inv.description, inv.hq].filter(Boolean)[0] || '';
+  $.innerHTML = `${bar()}<div class="fade">
+    <div class="head"><div class="av">${esc(initials(inv.name))}</div><div><h1>${esc(inv.name)}</h1><p>${esc(sub)}</p></div></div>
+    <div id="verdict"></div>
+    <div class="stats">
+      <div class="stat"><b>${inv.portfolio.length}</b><span>companies backed</span></div>
+      <div class="stat"><b>${a.last_12m}</b><span>deals, last 12 months</span></div>
+      <div class="stat"><b>${a.last_deal ? esc(fmtDate(a.last_deal)) : '–'}</b><span>latest deal</span></div>
+    </div>
+    ${a.deals ? `<div class="label"><span>Deals per year</span><span>${a.deals} on record</span></div>
+    <div class="chart">${a.by_year.map((y, i) => `<div class="bar-col"><em>${y.n || ''}</em><i style="height:${Math.round(y.n / max * 100)}%;animation-delay:${i * 40}ms"></i>${y.year.slice(2)}</div>`).join('')}</div>` : ''}
+    <div class="label"><span>Latest deals</span></div><div id="deals">${a.deals ? skRows(4) : '<div class="list"><div class="empty">Cala has no dated deals for this investor.</div></div>'}</div>
+    <div id="along"></div>
+    <div class="label"><span>Portfolio</span><span>${inv.portfolio.length}</span></div><div class="chips" id="port"></div>
+    <div class="foot">Every fact comes from Cala's knowledge graph. Tap a row to see its sources.</div></div>`;
+  wireBar();
+  portfolio(inv, new Set());
+  remember(inv, '', `${inv.portfolio.length} companies · ${a.last_12m} deals in 12 months`);
+  verdict(inv, mine);
+  if (a.deals) deals(inv, mine);
+}
+
+function portfolio(inv, rivalIds, all) {
+  const el = document.getElementById('port');
+  const hit = p => p.ids.some(i => rivalIds.has(i));
+  const sorted = [...inv.portfolio].sort((x, y) => hit(y) - hit(x));
+  const shown = all ? sorted : sorted.slice(0, 14);
+  el.innerHTML = (shown.map(p => `<span class="chip ${hit(p) ? 'bad' : ''}">${esc(p.name)}${hit(p) ? '<small style="color:inherit">your rival</small>' : ''}</span>`).join('')
+    || '<span class="t2">Cala lists no portfolio companies.</span>')
+    + (!all && sorted.length > shown.length ? `<button class="chip" id="allp">Show all ${sorted.length}</button>` : '');
+  const b = document.getElementById('allp');
+  if (b) b.onclick = () => portfolio(inv, rivalIds, true);
+}
+
+async function verdict(inv, mine) {
+  const el = document.getElementById('verdict');
+  if (!me) {
+    el.innerHTML = `<div class="verdict"><div class="k">Conflict check</div><div class="v">Does ${esc(inv.name)} back your rival?</div>
+      <form><input placeholder="Your company" aria-label="Your company"><button class="btn">Check</button></form></div>`;
+    el.querySelector('form').onsubmit = e => { e.preventDefault(); const v = el.querySelector('input').value.trim(); if (v) { me = v; store.set('me', me); route(); } };
+    return;
+  }
+  el.innerHTML = `<div class="verdict"><div class="k">Conflict check</div><div class="sk" style="height:20px;width:80%;margin-top:10px"></div><div class="s">Finding ${esc(me)}'s closest rivals in Cala. First time can take a minute.</div></div>`;
+  let c;
+  try { c = await api(`/${inv.id}/conflicts?me=${encodeURIComponent(me)}`); } catch (e) {
+    if (mine !== view) return;
+    el.innerHTML = `<div class="verdict"><div class="k">Conflict check</div><div class="s">${esc(e.message)}<button id="vr" style="text-decoration:underline;margin-left:6px;color:var(--ink)">Try again</button></div></div>`;
+    document.getElementById('vr').onclick = () => verdict(inv, mine); return;
+  }
+  if (mine !== view) return;
+  const names = c.conflicts.map(x => x.name), rivals = c.rivals.map(r => r.name);
+  if (names.length) {
+    el.innerHTML = `<button class="verdict bad fade" aria-expanded="false"><div class="k"><span class="dot bad"></span>Conflict</div>
+      <div class="v">${esc(inv.name)} backs ${esc(names.join(' and '))}, ${names.length > 1 ? 'direct rivals' : 'a direct rival'} of ${esc(c.company.name)}.</div>
+      <div class="s">${c.already_investor ? `It is also an investor in ${esc(c.company.name)}. ` : ''}Tap for sources.</div>
+      <div class="srcs" hidden>${c.conflicts.map(x => srcList(x.sources)).join('')}</div></button>`;
+    const b = el.firstElementChild;
+    b.onclick = e => { if (e.target.closest('a')) return; const s = b.querySelector('.srcs'); s.hidden = !s.hidden; b.setAttribute('aria-expanded', !s.hidden); };
+    remember(inv, 'bad', `Backs ${names.join(', ')}`);
+  } else if (!rivals.length) {
+    el.innerHTML = `<div class="verdict fade"><div class="k">Conflict check</div><div class="v">Cala found no rivals for ${esc(c.company.name)} yet.</div><div class="s">Without rivals there is nothing to compare the portfolio against.</div></div>`;
+  } else {
+    el.innerHTML = `<div class="verdict ok fade"><div class="k"><span class="dot ok"></span>No conflict found</div>
+      <div class="v">None of ${esc(c.company.name)}'s closest rivals are in this portfolio.</div>
+      <div class="s">Checked ${c.portfolio_size} companies against ${esc(rivals.join(', '))}.${c.already_investor ? ` Already an investor in ${esc(c.company.name)}.` : ''}</div></div>`;
+    remember(inv, 'ok', 'No rival in portfolio');
+  }
+  portfolio(inv, new Set(c.conflicts.map(x => x.portfolio_id)));
+}
+
+async function deals(inv, mine) {
+  const el = document.getElementById('deals');
+  let d;
+  try { d = await api(`/${inv.id}/deals`); } catch (e) {
+    if (mine !== view) return;
+    el.innerHTML = `<div class="err">${esc(e.message)}<button id="dr">Try again</button></div>`;
+    document.getElementById('dr').onclick = () => { el.innerHTML = skRows(4); deals(inv, mine); }; return;
+  }
+  if (mine !== view) return;
+  el.innerHTML = `<div class="list fade">${d.deals.map((x, i) => `<button class="row" data-i="${i}" aria-expanded="false">
+      <div class="av">${esc(initials(x.company || '?'))}</div>
+      <div class="tx"><div class="t1">${esc(x.company || 'Undisclosed company')}</div>
+        <div class="t2">${esc([x.round, x.co_investors.length ? 'with ' + x.co_investors.slice(0, 2).join(', ') + (x.co_investors.length > 2 ? ` +${x.co_investors.length - 2}` : '') : ''].filter(Boolean).join(' · ') || 'Funding round')}</div></div>
+      <div class="rt"><b>${esc(x.amount || '')}</b>${esc(fmtDate(x.date))}</div>
+    </button><div class="srcs" data-s="${i}" hidden>${srcList(x.sources) || 'No source link on this deal.'}</div>`).join('') || '<div class="empty">No deal details available.</div>'}</div>`;
+  el.querySelectorAll('button.row').forEach(b => b.onclick = () => {
+    const s = el.querySelector(`[data-s="${b.dataset.i}"]`); s.hidden = !s.hidden; b.setAttribute('aria-expanded', !s.hidden);
+  });
+  if (d.alongside.length) {
+    document.getElementById('along').innerHTML = `<div class="label"><span>Invests alongside</span><span>in the latest ${d.deals.length} deals</span></div>
+      <div class="list fade">${d.alongside.map(x => `<a class="row" href="#i/${x.id}"><div class="av">${esc(initials(x.name))}</div>
+        <div class="tx"><div class="t1">${esc(x.name)}</div></div><div class="rt">${x.deals} ${x.deals > 1 ? 'deals' : 'deal'}</div>${icon.chev}</a>`).join('')}</div>`;
+  }
+}
+
+function route() {
+  const m = location.hash.match(/^#i\/([\w-]+)/);
+  scrollTo(0, 0);
+  if (m) investor(m[1]); else { view++; home(); }
+}
+addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
