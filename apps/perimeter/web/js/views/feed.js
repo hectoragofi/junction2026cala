@@ -3,7 +3,7 @@ import { refreshPortfolio, seat, myCompany, viewingDemo, hasProfile, switchView 
 import { pathHTML, openOverlap, installPathHandlers } from '../overlap.js';
 import { $, $$, esc, srcChips, entLink, entPill, sevPill, statusPill, openMenu, openModal, toast, parseDate, fmtDate, trapFocus, plural } from '../ui.js';
 
-const KIND_LABEL = { overlap_investor: 'Investor overlap', overlap_board: 'Board overlap', funding: 'Funding', mna: 'M&A', regulatory: 'Regulatory', legal: 'Legal', hiring: 'Hiring', news: 'News' };
+const KIND_LABEL = { overlap_investor: 'Investor overlap', overlap_board: 'Board overlap', funding: 'Funding', mna: 'M&A', regulatory: 'Regulatory', legal: 'Legal', hiring: 'Hiring', news: 'News', page_change: 'Page change' };
 const CATS = ['All', 'Risk', 'Funding', 'Overlaps'];
 
 function greeting() {

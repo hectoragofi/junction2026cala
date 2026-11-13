@@ -16,9 +16,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from . import kg
+from . import kg, live
 from .cala import CACHE_DIR, PERIMETER_DIR, cala
 from .check import run_check
+from .contextdev import ctx
 from .perimeter import build
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -240,7 +241,14 @@ async def lifespan(app: FastAPI):
     d = demo_space()
     if d.state.get("portfolio_ids") and not d.state.get("built"):
         d.start_build()
+    # Live layer: one sweep for the shared demo perimeter only (it spends Context.dev credits). Every profile
+    # sees the stored items that concern companies of its own perimeter.
+    live.load()
+    live_task = asyncio.create_task(live.loop(lambda: demo_space().state.get("built"))) if ctx.enabled else None
     yield
+    if live_task:
+        live_task.cancel()
+    await ctx.close()
     await cala.close()
 
 
@@ -250,7 +258,7 @@ app = FastAPI(title="Perimeter", lifespan=lifespan)
 # --------------------------------------------------------------------------- API
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "cala": bool(cala.key), "cache": cala.stats}
+    return {"ok": True, "cala": bool(cala.key), "cache": cala.stats, "live": live.status()}
 
 
 class ResolveIn(BaseModel):
@@ -503,7 +511,21 @@ async def feed(request: Request):
     if not b:
         return {"summary": "Mapping your perimeter…" if s.building() else "Add companies to start watching.",
                 "items": [], "building": s.building()}
-    return {**b["feed"], "building": s.building(), "built_at": s.state.get("built_at")}
+    return live.merge_feed({**b["feed"], "building": s.building(), "built_at": s.state.get("built_at")}, b)
+
+
+@app.post("/api/live/refresh")
+async def live_refresh(request: Request):
+    """Ask Context.dev now instead of waiting for the next sweep (at most once a minute).
+    Sweeps cover the shared demo perimeter and spend credits, so under DEMO_LOCK they need the admin token."""
+    if _locked(request):
+        raise HTTPException(403, "demo is locked")
+    if not ctx.enabled:
+        raise HTTPException(503, "CONTEXT_DEV_API_KEY not set")
+    built = demo_space().state.get("built")
+    if not built:
+        raise HTTPException(400, "no perimeter yet")
+    return await live.sweep(built)
 
 
 def _sse(event: str, data: dict) -> str:
@@ -682,6 +704,8 @@ def _template_note(it: dict) -> dict:
     when = f" ({_human_date(it['date'])})" if it.get("date") else ""
     status = {"confirmed": "Cala lists this as a sourced fact", "reported": "This was reported in the press",
               "possible": "This is a possible match we have not confirmed"}.get(it.get("status"), "")
+    if it.get("live") and it.get("status") == "confirmed":  # not a Cala fact: say where it really comes from
+        status = "We saw this change on their page" if it["kind"] == "page_change" else             "This comes from a regulatory filing"
     if status:
         lines += ["", f"{status}{when}."]
     srcs = [s for s in it.get("sources") or [] if s.get("url")][:3]
@@ -722,7 +746,8 @@ async def _polish(note: dict, it: dict) -> dict:
 @app.post("/api/draft")
 async def draft(body: DraftIn, request: Request):
     b = active(request).state.get("built") or {}
-    it = next((i for i in (b.get("feed") or {}).get("items", []) if i["id"] == body.item_id), None)
+    pool = (b.get("feed") or {}).get("items", []) + live.items_for(b)
+    it = next((i for i in pool if i["id"] == body.item_id), None)
     if not it:
         raise HTTPException(404, "item not found")
     return await _polish(_template_note(it), it)

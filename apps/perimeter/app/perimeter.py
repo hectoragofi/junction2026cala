@@ -461,10 +461,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
     items = sorted(uniq.values(), key=lambda i: (i.get("date") or "0000", _sev_rank(i["severity"])), reverse=True)
     signals = _dedupe_signals(signals)
 
-    need = sum(1 for i in items if i["severity"] in ("high", "medium") and (months_ago(i.get("date")) or 0) <= 12)
-    n = len(port)
-    summary = (f"{need} thing{'s' if need != 1 else ''} need{'s' if need == 1 else ''} a look across your {n} "
-               f"compan{'ies' if n != 1 else 'y'}." if need else f"All quiet across your {n} companies.")
+    summary = summarize(items, len(port))
 
     # ---- perimeter view
     def pub_company(c):
@@ -472,7 +469,8 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
             "id": c["id"], "name": c["name"], "description": c["description"], "website": c.get("website"),
             "hq": c.get("hq"), "founded": c.get("founded"), "industry": c.get("industry"),
             "rivals": [{"id": r["id"], "name": rivals[r["id"]]["name"], "type": "Company",
-                        "sub": r.get("sub"), "confidence": r.get("confidence")}
+                        "sub": r.get("sub"), "confidence": r.get("confidence"),
+                        "website": rivals[r["id"]].get("website")}
                        for r in c["rivals"] if r["id"] in rivals],
             "investors": [{k: v for k, v in {"id": i["id"], "name": short_company(i["name"]), "type": i["type"], "sub": i["sub"],
                                              "shared_with": i.get("shared_with")}.items() if v is not None}
@@ -500,6 +498,13 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
         "rivals_index": {rid: {"name": universe[rid]["name"], "of": [universe[x]["name"] for x in v]}
                          for rid, v in rival_of.items()},
     }
+
+
+def summarize(items: list[dict], n: int) -> str:
+    """One-line feed summary: how many high/medium items of the last 12 months need a look."""
+    need = sum(1 for i in items if i["severity"] in ("high", "medium") and (months_ago(i.get("date")) or 0) <= 12)
+    return (f"{need} thing{'s' if need != 1 else ''} need{'s' if need == 1 else ''} a look across your {n} "
+            f"compan{'ies' if n != 1 else 'y'}." if need else f"All quiet across your {n} companies.")
 
 
 def _company_pub(c: dict) -> dict:

@@ -50,7 +50,7 @@ own profile can always be changed. Cold builds share a global queue (`BUILD_SLOT
 
 ## Endpoints (all JSON unless noted)
 
-- `GET /api/health` → `{ok:true, cala:true}`
+- `GET /api/health` → `{ok:true, cala:true, live: {enabled, updated_at, items, targets, error}}`
 - `POST /api/resolve {text}` → `{ matches: [{ query, best: Company|null, candidates: Company[] }] }`
   `text` = comma/newline separated names or a URL. `Company = {id,name,description,website?,hq?,founded?}`.
 - `GET /api/portfolio` → `{ companies: Company[], building: bool, built_at: iso|null, progress?, error?, status?: CompanyStatus[] }`
@@ -93,7 +93,19 @@ own profile can always be changed. Cold builds share a global queue (`BUILD_SLOT
   Titles are plain sentences ("Revolut experienced data breaches"); the subject/relation goes in `subject`.
   Screening sources are only kept when their title/URL or snippet is about the finding; pages whose headline is
   about something else are shown by domain.
-  Items sorted newest first; client groups by date (This week / Earlier this month / Earlier).
+  Items sorted newest first; client groups by date (Today / Yesterday / This week / Earlier this month / Earlier).
+  **Live items (Context.dev).** With `CONTEXT_DEV_API_KEY` set, the response also carries
+  `live: {enabled, updated_at, items, targets, error}` and the items found by the live layer (`app/live.py`), merged
+  into `items` with `live: true, via: "context.dev"` and the summary recounted. They use the same shape:
+  - news about a portfolio company or a rival, last `LIVE_NEWS_DAYS` days: `kind` = `news|regulatory|legal|funding|mna`;
+    `status` = `confirmed` for a regulatory filing, `reported` for press, `possible` + `confidence` when the company
+    was matched by name and Context.dev is not sure it is the same one (below 0.6 it is not shown at all).
+  - `kind: "page_change"`: a page monitor saw a watched page change (e.g. a rival's pricing page). `status` is
+    `confirmed`, `before` / `after` hold the text excerpts, the source is the page itself.
+  Every live item is attached to a company of the current perimeter (`company`, plus `subject` for a rival).
+  A sweep runs at startup and every `LIVE_REFRESH_MIN` minutes; `POST /api/live/refresh` runs one now (at most once
+  a minute; needs `X-Admin-Token` under `DEMO_LOCK`) → `{enabled, new, items, targets, errors}`. Setup and monitors: `uv run python scripts/live.py`.
+  `/api/perimeter` rivals now also carry `website?`, which the live layer uses to match news by domain.
 - `GET /api/check/stream?q=<name or entity id>` — **Server-Sent Events**:
   - `event: step` data `{key, label, status: "running"|"done"|"error", detail?: str}` keys in order:
     `match` "Matching the company", `profile` "Reading Cala profile", `people` "Mapping people and owners",
