@@ -20,6 +20,9 @@ from app import main as m  # noqa: E402
 from app.cala import cala  # noqa: E402
 from app.check import run_check  # noqa: E402
 from app.perimeter import build  # noqa: E402
+from app import check as check_mod  # noqa: E402
+
+check_mod.RIVALS_DEADLINE = check_mod.SCREEN_DEADLINE = 900.0  # warming: wait for every slow call
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 

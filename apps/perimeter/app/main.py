@@ -358,7 +358,7 @@ async def entity(eid: str):
 
 
 # --------------------------------------------------------------------------- static web
-@app.get("/{path:path}", include_in_schema=False)
+@app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 async def web(path: str):
     if path.startswith("api/"):
         raise HTTPException(404)

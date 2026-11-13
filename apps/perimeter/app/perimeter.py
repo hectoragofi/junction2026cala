@@ -223,8 +223,10 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                              f"a rival of {universe[rp]['name']}")
                 srcs = merge_sources(t["companies"][p], t["companies"][r], cap=6)
                 body = (f"Cala lists {inv['name']} as an investor in both {universe[p]['name']} and "
-                        f"{universe[r]['name']}. Board access or information rights at a direct competitor "
-                        f"are worth checking.")
+                        f"{universe[r]['name']}"
+                        + (f", one of {universe[p]['name']}'s closest competitors. " if direct else
+                           f", which competes with {universe[rp]['name']} (also in your portfolio). ")
+                        + "Worth checking board seats and information rights.")
                 items.append({
                     "id": _id("inv", k, r), "kind": "overlap_investor", "category": "Overlaps", "severity": sev,
                     "status": "confirmed", "title": title, "body": body,

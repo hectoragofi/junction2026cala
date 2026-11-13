@@ -68,6 +68,7 @@ def strip_accents(s: str) -> str:
 def norm_tokens(name: str) -> list[str]:
     s = strip_accents(name or "").lower()
     s = re.sub(r"\(.*?\)", " ", s)
+    s = re.sub(r"(?<![a-z])([a-z])\.([a-z])\.?(?![a-z])", lambda m: m.group(1) + m.group(2), s)  # n.v. -> nv
     s = re.sub(r"[^a-z0-9]+", " ", s)
     toks = [t for t in s.split() if t not in _LEGAL and not t.isdigit()]
     return toks
