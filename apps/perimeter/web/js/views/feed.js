@@ -17,7 +17,8 @@ function bucket(d) {
   if (days === 1) return 'Yesterday';
   if (days < 7) return 'This week';
   if (x.getMonth() === now.getMonth() && x.getFullYear() === now.getFullYear()) return 'Earlier this month';
-  return 'Earlier';
+  const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][x.getMonth()];
+  return x.getFullYear() === now.getFullYear() ? M : (now - x < 400 * 864e5 ? `${M} ${x.getFullYear()}` : 'Earlier');
 }
 const isCard = it => it.status === 'possible' || it.severity === 'high' || it.severity === 'medium' || it.kind?.startsWith('overlap');
 
@@ -41,7 +42,7 @@ function cardHTML(it) {
     ? `<div class="acts yn"><button type="button" class="btn" data-yes="${esc(it.id)}">Yes, it’s them</button><button type="button" class="btn" data-no="${esc(it.id)}">Not this company</button><span class="grow"></span>${srcChips(it.sources)}</div>`
     : `<div class="acts">${srcChips(it.sources)}<span class="grow"></span>
         ${it.severity === 'high' && !overlap && !draft ? `<button type="button" class="btn ghost" data-no="${esc(it.id)}">Not this company</button>` : ''}
-        ${draft ? `<button type="button" class="btn dark" data-draft="${esc(it.id)}">Draft note<span class="mhide"> to founder</span></button>` : ''}</div>`;
+        ${draft ? `<button type="button" class="btn dark" data-draft="${esc(it.id)}"><span>Draft note<span class="mhide"> to founder</span></span></button>` : ''}</div>`;
   return `<article class="card fcard${possible ? ' possible' : ''}" data-item="${esc(it.id)}">
     <div class="lbls">${labels}${metaLine(it)}</div>
     <h3>${esc(it.title)}</h3>
@@ -79,7 +80,7 @@ export async function render(ctx) {
   if (!ctx.isCurrent()) return;
   $('#sum').textContent = data.summary || '';
 
-  const items = () => (data.items || []).filter(i => !hidden.has(i.id)).map(i => confirmed.has(i.id) ? { ...i, status: 'confirmed' } : i);
+  const items = () => [...(data.items || [])].sort((a, b) => (b.date || '').localeCompare(a.date || '')).filter(i => !hidden.has(i.id)).map(i => confirmed.has(i.id) ? { ...i, status: 'confirmed' } : i);
   function drawFilters() {
     const all = items();
     const ct = c => c === 'All' ? all.length : all.filter(i => i.category === c).length;
