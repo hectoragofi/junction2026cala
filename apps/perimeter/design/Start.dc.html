@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#FFFFFF;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--line-2:#DCDCE0;--accent:#3D5AFE;--accent-soft:#EEF1FF;--accent-ink:#2A40C7}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--accent-ink)}
+button{font-family:inherit;cursor:pointer}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.row{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line)}
+.x{width:32px;height:32px;border-radius:999px;border:0;background:none;color:var(--faint);font-size:18px}
+.x:hover{background:#F0F0F2;color:var(--ink)}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: var(--bg);">
+  <header style="max-width: 1080px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center;">
+    <span style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px;"><span style="width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--ink); box-sizing: border-box;"></span>Perimeter</span>
+  </header>
+
+  <main style="max-width: 640px; margin: 0 auto; padding: 96px 24px 80px; display: flex; flex-direction: column; gap: 56px;">
+    <section style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px;">
+      <h1 style="margin: 0; font-size: 44px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;">Know first when something<br>changes around your bets.</h1>
+      <p style="margin: 0; color: var(--muted); font-size: 16px;">Sourced risk checks and a quiet feed for your portfolio.</p>
+    </section>
+
+    <form style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; gap: 2px; padding: 3px; background: #F0F0F2; border-radius: 999px; align-self: center;">
+        <button type="button" style="border: 0; font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.06);">Watch a portfolio</button>
+        <button type="button" style="border: 0; font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 999px; background: none; color: var(--muted);">Check one company</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 6px 6px 22px; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+        <label for="pf" style="position: absolute; left: -9999px;">Portfolio page link</label>
+        <input id="pf" type="url" value="https://fernhollow.example/portfolio" style="flex-grow: 1; min-width: 0; font: inherit; font-size: 15px; border: 0; outline: none; background: none; color: var(--ink); height: 40px;">
+        <button type="submit" style="height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 14px; font-weight: 500;">Continue</button>
+      </div>
+      <p style="margin: 0; text-align: center; font-size: 13px; color: var(--faint);">Paste a portfolio page, or company names separated by commas.</p>
+    </form>
+
+    <section aria-label="Confirm companies" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <h2 style="margin: 0; font-size: 15px; font-weight: 600;">We found 5 companies</h2>
+        <span style="font-size: 13px; color: var(--faint);">Remove any that are wrong</span>
+      </div>
+      <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px;">
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Quillfern Pay</span><span style="font-size: 13px; color: var(--faint);">quillfern.example</span><button type="button" class="x" aria-label="Remove Quillfern Pay">×</button></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Bramblewick Health</span><span style="font-size: 13px; color: var(--faint);">bramblewick.example</span><button type="button" class="x" aria-label="Remove Bramblewick Health">×</button></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Tessaro Logistics</span><span style="font-size: 13px; color: var(--faint);">tessaro.example</span><button type="button" class="x" aria-label="Remove Tessaro Logistics">×</button></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Lumenoak Energy</span><span style="font-size: 13px; color: var(--faint);">lumenoak.example</span><button type="button" class="x" aria-label="Remove Lumenoak Energy">×</button></div>
+        <div class="row" style="border-bottom: 0;"><span style="flex-grow: 1; font-weight: 500; color: var(--faint);">Pebbleworth Studio</span><span class="pill" style="border: 1.5px dashed var(--line-2); color: var(--muted);">Not found</span><button type="button" class="x" aria-label="Remove Pebbleworth Studio">×</button></div>
+      </div>
+      <button type="button" style="align-self: flex-end; height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font-size: 14px; font-weight: 500;">Start watching 4 companies</button>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

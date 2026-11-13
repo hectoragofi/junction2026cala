@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Token sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#FFFFFF;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--line-2:#DCDCE0;--accent:#3D5AFE;--accent-soft:#EEF1FF;--accent-ink:#2A40C7}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.cap{font-size:12px;font-weight:500;color:var(--faint)}
+.sw{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.sw small{font-size:12px;color:var(--faint)}
+.tr{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}
+</style>
+</helmet>
+<div style="width: 900px; min-height: 900px; box-sizing: border-box; padding: 56px; background: var(--bg); display: flex; flex-direction: column; gap: 40px;">
+  <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.02em;">Tokens</h1>
+
+  <section style="display: flex; flex-direction: column; gap: 14px;">
+    <span class="cap">Colour</span>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;">
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #FAFAFA; border: 1px solid var(--line);"></div>bg<small>#FAFAFA</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #FFFFFF; border: 1px solid var(--line);"></div>card<small>#FFFFFF</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #EDEDEF;"></div>line<small>#EDEDEF</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #DCDCE0;"></div>line-2<small>#DCDCE0</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #F0F0F2;"></div>fill<small>#F0F0F2</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #0A0A0A;"></div>ink<small>#0A0A0A</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #5C5C66;"></div>muted<small>#5C5C66 · 6.6:1</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #8A8A93;"></div>faint<small>#8A8A93 · large/labels only</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #3D5AFE;"></div>accent<small>#3D5AFE</small></div>
+      <div class="sw"><div style="height: 64px; border-radius: 12px; background: #EEF1FF;"></div>accent-soft<small>#EEF1FF</small></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column;">
+    <span class="cap" style="margin-bottom: 4px;">Type · Inter, tabular numerals</span>
+    <div class="tr"><span style="font-size: 44px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;">Display</span><span class="cap">44 · 600 · -3%</span></div>
+    <div class="tr"><span style="font-size: 30px; font-weight: 600; letter-spacing: -0.02em;">Page title</span><span class="cap">30 · 600 · -2%</span></div>
+    <div class="tr"><span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em;">Card headline</span><span class="cap">17 · 600</span></div>
+    <div class="tr"><span style="font-size: 14px;">Body text for facts and summaries</span><span class="cap">14 · 400</span></div>
+    <div class="tr"><span style="font-size: 13px; color: var(--muted);">Meta, time and sources</span><span class="cap">13 · 400</span></div>
+    <div class="tr"><span style="font-size: 12px; font-weight: 500;">Pill</span><span class="cap">12 · 500</span></div>
+  </section>
+
+  <section style="display: flex; gap: 48px;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span class="cap">Spacing</span>
+      <span style="font-size: 14px;">4 · 8 · 12 · 16 · 20 · 28 · 48 · 96</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span class="cap">Radius</span>
+      <span style="font-size: 14px;">10 inset · 14 card · 999 pill and button</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span class="cap">Width</span>
+      <span style="font-size: 14px;">720 content column</span>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

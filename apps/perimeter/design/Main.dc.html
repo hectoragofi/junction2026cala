@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Perimeter feed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#FFFFFF;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--line-2:#DCDCE0;--accent:#3D5AFE;--accent-soft:#EEF1FF;--accent-ink:#2A40C7}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--accent-ink)}
+button{font-family:inherit;cursor:pointer}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.src{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.src:hover{border-color:var(--line-2);color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: var(--bg);">
+  <header style="position: sticky; top: 0; background: rgba(250,250,250,0.85); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);">
+    <div style="max-width: 1080px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 16px;">
+      <a href="#" style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; text-decoration: none; flex: 1 1 0;"><span style="width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--ink); box-sizing: border-box;"></span>Perimeter</a>
+      <nav aria-label="Main" style="display: flex; gap: 2px; padding: 3px; background: #F0F0F2; border-radius: 999px;">
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.06);">Feed</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Map</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Brief</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Check</a>
+      </nav>
+      <div style="flex: 1 1 0; display: flex; justify-content: flex-end;">
+        <button type="button" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px 0 14px; border: 1px solid var(--line-2); background: var(--card); border-radius: 999px; font-size: 13px; color: var(--muted);">Ask anything <span style="font-size: 11px; border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 6px;">⌘K</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <h1 style="margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.02em;">Good morning</h1>
+      <p style="margin: 0; color: var(--muted); font-size: 15px;">3 things need a look across your 4 companies. Everything else is quiet.</p>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button type="button" class="pill" style="border: 0; background: var(--ink); color: #fff;">All</button>
+      <button type="button" class="pill" style="border: 1px solid var(--line-2); background: var(--card);">Risk</button>
+      <button type="button" class="pill" style="border: 1px solid var(--line-2); background: var(--card);">Funding</button>
+      <button type="button" class="pill" style="border: 1px solid var(--line-2); background: var(--card);">Overlaps</button>
+      <button type="button" class="pill" style="border: 1px solid var(--line-2); background: var(--card);">All companies ▾</button>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 13px; font-weight: 500; color: var(--faint);">Today</h2>
+
+      <article class="card">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="pill" style="background: var(--accent-soft); color: var(--accent-ink);">Board overlap</span>
+          <span style="font-size: 13px; color: var(--faint);">Quillfern · Halvard · 08:05</span>
+        </div>
+        <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.4;">Ines Varga joined Halvard’s board. She already sits on Quillfern’s.</h3>
+        <p style="margin: 0; color: var(--muted);">Halvard is Quillfern’s closest rival, and it got an enforcement notice today.</p>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+          <button type="button" class="src">Cala · board member · 11 Nov</button>
+          <span style="flex-grow: 1;"></span>
+          <button type="button" style="height: 32px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 13px; font-weight: 500;">Draft note to founder</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="pill" style="background: var(--accent); color: #fff;">High risk</span>
+          <span class="pill" style="border: 1px solid var(--ink); color: var(--ink);">Confirmed</span>
+          <span style="font-size: 13px; color: var(--faint);">Halvard Payments · rival of Quillfern · 07:15</span>
+        </div>
+        <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.4;">Halvard Payments got an enforcement notice on customer funds</h3>
+        <p style="margin: 0; color: var(--muted);">Per the Northmarch Conduct Office register, 12 Nov. Halvard is Quillfern’s closest rival.</p>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+          <button type="button" class="src">Northmarch register · 12 Nov</button>
+          <button type="button" class="src">Cala · profile</button>
+          <span style="flex-grow: 1;"></span>
+          <button type="button" style="border: 0; background: none; font-size: 13px; color: var(--faint); padding: 6px 0;">Not this company</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="pill" style="background: var(--accent-soft); color: var(--accent-ink);">Investor overlap</span>
+          <span style="font-size: 13px; color: var(--faint);">Corvel Diagnostics · rival of Bramblewick · 06:50</span>
+        </div>
+        <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.4;">Northvane Capital backs Bramblewick and just led a rival’s €42M round</h3>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+          <button type="button" class="src">Cala · funding round</button>
+          <span style="flex-grow: 1;"></span>
+          <button type="button" style="height: 32px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 13px; font-weight: 500;">Draft note to founder</button>
+        </div>
+      </article>
+
+      <article class="card" style="border: 1.5px dashed var(--line-2); background: var(--bg);">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="pill" style="border: 1.5px dashed var(--muted); color: var(--ink);">Possible match · 72%</span>
+          <span class="pill" style="background: #F0F0F2; color: var(--muted);">Reported</span>
+          <span style="font-size: 13px; color: var(--faint);">Tessaro · yours</span>
+        </div>
+        <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.4;">“Tessaro Freight” named in a contract dispute with a port operator</h3>
+        <p style="margin: 0; color: var(--muted);">Is this Tessaro Logistics? Harbourline Daily reported it on 12 Nov.</p>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" style="height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--card); font-size: 13px; font-weight: 500;">Yes, it’s them</button>
+          <button type="button" style="height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--card); font-size: 13px; font-weight: 500;">Not this company</button>
+          <span style="flex-grow: 1;"></span>
+          <button type="button" class="src">Harbourline Daily · 12 Nov</button>
+        </div>
+      </article>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 13px; font-weight: 500; color: var(--faint);">Yesterday</h2>
+      <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px;">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line);">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Pricing</span>
+          <span style="flex-grow: 1; min-width: 0;">Marrowgate cut its entry plan from €49 to €29</span>
+          <button type="button" class="src">marrowgate.example</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line);">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Funding</span>
+          <span style="flex-grow: 1; min-width: 0;">Sundial Grid raised €9.5M, led by Osprey &amp; Loom</span>
+          <button type="button" class="src">Cala</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line);">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Trial</span>
+          <span style="flex-grow: 1; min-width: 0;">Corvel registered a trial for its competing assay</span>
+          <button type="button" class="src">Cala · clinical trial</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line);">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Law</span>
+          <span style="flex-grow: 1; min-width: 0;">New EU payment rules affect Quillfern and 4 rivals</span>
+          <button type="button" class="src">Cala · law</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line);">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Patent</span>
+          <span style="flex-grow: 1; min-width: 0;">Sundial Grid was granted 2 storage patents</span>
+          <button type="button" class="src">Cala · patent</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line);">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Exit</span>
+          <span style="flex-grow: 1; min-width: 0;">Kestrel Route, a Tessaro rival, was acquired</span>
+          <button type="button" class="src">Cala · corporate event</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 22px;">
+          <span class="pill" style="background: #F0F0F2; color: var(--muted); width: 64px; justify-content: center;">Hiring</span>
+          <span style="flex-grow: 1; min-width: 0;">Corvel’s headcount grew from 80 to 131 in a year</span>
+          <button type="button" class="src">Cala · employees</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

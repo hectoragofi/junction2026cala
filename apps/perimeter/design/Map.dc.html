@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your perimeter</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#FFFFFF;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--line-2:#DCDCE0;--accent:#3D5AFE;--accent-soft:#EEF1FF;--accent-ink:#2A40C7}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--accent-ink)}
+button{font-family:inherit;cursor:pointer}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.n{background:#F0F0F2;color:var(--ink)}
+.hot{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.h{margin:0;font-size:13px;font-weight:500;color:var(--faint)}
+.stat{display:flex;flex-direction:column;gap:2px;padding:18px 20px}
+.stat b{font-size:24px;font-weight:600;letter-spacing:-0.02em}
+.stat span{font-size:12px;color:var(--muted)}
+.lane{display:grid;grid-template-columns:200px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:20px;padding:20px 22px;border-bottom:1px solid var(--line);align-items:start}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.sig{display:flex;gap:14px;align-items:flex-start;padding:16px 22px;border-bottom:1px solid var(--line)}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: var(--bg);">
+  <header style="border-bottom: 1px solid var(--line);">
+    <div style="max-width: 1240px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 16px;">
+      <a href="#" style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; text-decoration: none; flex: 1 1 0;"><span style="width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--ink); box-sizing: border-box;"></span>Perimeter</a>
+      <nav aria-label="Main" style="display: flex; gap: 2px; padding: 3px; background: #F0F0F2; border-radius: 999px;">
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Feed</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.06);">Map</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Brief</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Check</a>
+      </nav>
+      <div style="flex: 1 1 0;"></div>
+    </div>
+  </header>
+
+  <main style="max-width: 1240px; margin: 0 auto; padding: 48px 24px 80px; display: flex; flex-direction: column; gap: 32px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <h1 style="margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.02em;">Your perimeter</h1>
+      <p style="margin: 0; color: var(--muted); font-size: 15px;">Everything around your 4 companies, mapped from Cala. Blue means it touches more than one of your companies.</p>
+    </div>
+
+    <div class="card" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));">
+      <div class="stat" style="border-right: 1px solid var(--line);"><b>17</b><span>Rivals</span></div>
+      <div class="stat" style="border-right: 1px solid var(--line);"><b>23</b><span>Investors</span></div>
+      <div class="stat" style="border-right: 1px solid var(--line);"><b>61</b><span>Founders, execs, board</span></div>
+      <div class="stat" style="border-right: 1px solid var(--line);"><b>9</b><span>Countries</span></div>
+      <div class="stat" style="border-right: 1px solid var(--line);"><b>0</b><span>Sanctions hits in 104 entities</span></div>
+      <div class="stat"><b>3,412</b><span>Cala facts, each sourced</span></div>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">Who is around each company</h2>
+      <div class="card">
+        <div class="lane" style="padding-top: 14px; padding-bottom: 10px; font-size: 12px; color: var(--faint);">
+          <span>Your company</span><span>Rivals</span><span>Investors</span><span>People</span>
+        </div>
+        <div class="lane">
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Quillfern Pay</span><span style="font-size: 12px; color: var(--muted);">Payments · Porto</span></div>
+          <div class="chips"><span class="pill n">Halvard Payments</span><span class="pill n">Brisa Ledger</span><span class="pill n">Tollgate</span><span class="pill n">+2</span></div>
+          <div class="chips"><span class="pill hot">Fernhollow Angels</span><span class="pill n">Ribbonfall Seed</span></div>
+          <div class="chips"><span class="pill hot">Ines Varga · board, also Halvard</span><span class="pill n">2 founders</span></div>
+        </div>
+        <div class="lane">
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Bramblewick Health</span><span style="font-size: 12px; color: var(--muted);">Diagnostics · Valencia</span></div>
+          <div class="chips"><span class="pill n">Corvel Diagnostics</span><span class="pill n">Assay North</span><span class="pill n">+3</span></div>
+          <div class="chips"><span class="pill hot">Northvane Capital · also Corvel, Halvard</span><span class="pill hot">Fernhollow Angels</span></div>
+          <div class="chips"><span class="pill n">2 founders</span><span class="pill n">CFO ex-Corvel</span></div>
+        </div>
+        <div class="lane">
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Tessaro Logistics</span><span style="font-size: 12px; color: var(--muted);">Freight software · Milan</span></div>
+          <div class="chips"><span class="pill n">Marrowgate Freight</span><span class="pill n">Kestrel Route</span><span class="pill n">+3</span></div>
+          <div class="chips"><span class="pill n">Larchmont Partners</span><span class="pill n">Fieldwise</span></div>
+          <div class="chips"><span class="pill n">3 founders</span></div>
+        </div>
+        <div class="lane" style="border-bottom: 0;">
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Lumenoak Energy</span><span style="font-size: 12px; color: var(--muted);">Grid storage · Seville</span></div>
+          <div class="chips"><span class="pill n">Sundial Grid</span><span class="pill n">Voltmere</span><span class="pill n">+2</span></div>
+          <div class="chips"><span class="pill hot">Osprey &amp; Loom · also Halvard, Sundial</span></div>
+          <div class="chips"><span class="pill n">2 founders</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start;">
+      <section style="display: flex; flex-direction: column; gap: 12px;">
+        <h2 class="h">Signals only a knowledge graph can see</h2>
+        <div class="card">
+          <div class="sig"><span class="pill hot" style="width: 96px; justify-content: center;">Board seat</span><span style="flex-grow: 1;">Ines Varga sits on the boards of Quillfern and its closest rival, Halvard.</span></div>
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">New entrant</span><span style="flex-grow: 1;">3 diagnostics companies founded in Spain this year now sit within Bramblewick’s funding band.</span></div>
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">Clinical trial</span><span style="flex-grow: 1;">Corvel registered a trial for the assay that competes with Bramblewick’s.</span></div>
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">Patent</span><span style="flex-grow: 1;">Sundial Grid was granted 2 storage patents this quarter.</span></div>
+          <div class="sig" style="border-bottom: 0;"><span class="pill n" style="width: 96px; justify-content: center;">Talent</span><span style="flex-grow: 1;">Bramblewick’s CFO previously worked at Corvel.</span></div>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 12px;">
+        <h2 class="h">Outside forces</h2>
+        <div class="card">
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">Regulation</span><span style="flex-grow: 1;">New EU payment services rules affect Quillfern and 4 of its rivals.</span></div>
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">Exits</span><span style="flex-grow: 1;">2 freight-software companies were acquired this year, the closest comps for Tessaro.</span></div>
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">Public comps</span><span style="flex-grow: 1;">Listed payment processors’ revenue growth, from their latest filings.</span></div>
+          <div class="sig"><span class="pill n" style="width: 96px; justify-content: center;">Macro</span><span style="flex-grow: 1;">Policy rates and inflation in Portugal, Spain and Italy, where your companies operate.</span></div>
+          <div class="sig" style="border-bottom: 0;"><span class="pill n" style="width: 96px; justify-content: center;">Currency</span><span style="flex-grow: 1;">All amounts converted to euros at Cala’s exchange rate for each date.</span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

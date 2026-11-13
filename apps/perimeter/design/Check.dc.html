@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check report: Halvard Payments</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#FFFFFF;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--line-2:#DCDCE0;--accent:#3D5AFE;--accent-soft:#EEF1FF;--accent-ink:#2A40C7}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--accent-ink)}
+button{font-family:inherit;cursor:pointer}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.src{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.row{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line)}
+.h{margin:0;font-size:13px;font-weight:500;color:var(--faint)}
+.k{font-size:12px;color:var(--faint)}
+.fact{display:flex;flex-direction:column;gap:2px;padding:16px 22px}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: var(--bg);">
+  <header style="border-bottom: 1px solid var(--line);">
+    <div style="max-width: 1080px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 16px;">
+      <a href="#" style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; text-decoration: none; flex: 1 1 0;"><span style="width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--ink); box-sizing: border-box;"></span>Perimeter</a>
+      <nav aria-label="Main" style="display: flex; gap: 2px; padding: 3px; background: #F0F0F2; border-radius: 999px;">
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Feed</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; color: var(--muted);">Brief</a>
+        <a href="#" style="text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.06);">Check</a>
+      </nav>
+      <div style="flex: 1 1 0; display: flex; justify-content: flex-end;">
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid var(--line-2); background: var(--card); border-radius: 999px; font-size: 13px;">Share</button>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 13px; color: var(--faint);">Checked 13 Nov 2026 · last 12 months · 41 s</span>
+      <h1 style="margin: 0; font-size: 36px; font-weight: 600; letter-spacing: -0.025em;">Halvard Payments</h1>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+        <span class="pill" style="background: #F0F0F2; color: var(--muted);">Payments</span>
+        <span class="pill" style="background: #F0F0F2; color: var(--muted);">Lisbon</span>
+        <span class="pill" style="background: #F0F0F2; color: var(--muted);">Founded 2021</span>
+        <span class="pill" style="background: #F0F0F2; color: var(--muted);">€22.2M raised</span>
+        <span style="font-size: 12px; color: var(--faint); margin-left: 4px;">Matched in Cala by LEI</span>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 22px; display: flex; align-items: stretch;">
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 28px; font-weight: 600; color: var(--accent);">1</span><span style="font-size: 13px; color: var(--muted);">High</span></div>
+      <div style="width: 1px; background: var(--line); margin: 0 22px;"></div>
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 28px; font-weight: 600;">1</span><span style="font-size: 13px; color: var(--muted);">Medium</span></div>
+      <div style="width: 1px; background: var(--line); margin: 0 22px;"></div>
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 28px; font-weight: 600;">1</span><span style="font-size: 13px; color: var(--muted);">Low</span></div>
+      <div style="width: 1px; background: var(--line); margin: 0 22px;"></div>
+      <div style="flex: 1.6 1 0; display: flex; flex-direction: column; justify-content: center; font-size: 13px; color: var(--muted);">142 Cala facts · 9 entities screened<br>13 Nov 2025 – 13 Nov 2026</div>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">Findings</h2>
+      <div class="card">
+        <div style="padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;"><span class="pill" style="background: var(--accent); color: #fff;">High</span><span class="pill" style="border: 1px solid var(--ink);">Confirmed</span><span style="font-size: 13px; color: var(--faint);">Regulatory event</span></div>
+          <span style="font-size: 15px; font-weight: 600;">Enforcement notice on customer fund safeguarding</span>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;"><span style="color: var(--muted); font-size: 13px;">Per the Northmarch Conduct Office register. Still open.</span><button type="button" class="src">Cala · regulatory event · 12 Nov</button></div>
+        </div>
+        <div style="padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;"><span class="pill" style="border: 1px solid var(--line-2);">Medium</span><span class="pill" style="background: #F0F0F2; color: var(--muted);">Reported</span><span style="font-size: 13px; color: var(--faint);">Legal</span></div>
+          <span style="font-size: 15px; font-weight: 600;">Former merchant partner filed a claim over settlement delays</span>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;"><span style="color: var(--muted); font-size: 13px;">Per Harbourline Daily. No outcome reported.</span><button type="button" class="src">Cala · Harbourline Daily</button><button type="button" class="src">+1</button></div>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;"><span class="pill" style="border: 1px solid var(--line); color: var(--muted);">Low</span><span class="pill" style="background: #F0F0F2; color: var(--muted);">Reported</span><span style="font-size: 13px; color: var(--faint);">Regulatory</span></div>
+          <span style="font-size: 15px; font-weight: 600;">Second-market licence application reported as delayed</span>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;"><span style="color: var(--muted); font-size: 13px;">Per The Lantern Ledger.</span><button type="button" class="src">Cala · Lantern Ledger</button></div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; background: #F0F0F2; font-size: 13px; color: var(--muted);">
+        <span style="width: 18px; height: 18px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">✓</span>
+        <span style="flex-grow: 1;">Sanctions: no matches for the company, its parent, 3 owners and 4 officers.</span>
+        <button type="button" class="src">Cala · sanctions</button>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">Company</h2>
+      <div class="card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));">
+        <div class="fact" style="border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);"><span class="k">Legal name</span><span>Halvard Payments, S.A.</span></div>
+        <div class="fact" style="border-bottom: 1px solid var(--line);"><span class="k">Registered in</span><span>Portugal</span></div>
+        <div class="fact" style="border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);"><span class="k">Headquarters</span><span>Lisbon</span></div>
+        <div class="fact" style="border-bottom: 1px solid var(--line);"><span class="k">Industry</span><span>Payment processing</span></div>
+        <div class="fact" style="border-right: 1px solid var(--line);"><span class="k">Employees</span><span>148 <span style="color: var(--faint); font-size: 13px;">up from 96 a year ago</span></span></div>
+        <div class="fact"><span class="k">Also known as</span><span>Halvard Pay</span></div>
+      </div>
+      <span style="font-size: 12px; color: var(--faint);">Every field opens its Cala source and date.</span>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">People</h2>
+      <div class="card">
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Rui Calado</span><span style="font-size: 13px; color: var(--muted);">Founder, CEO</span></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Maren Ostby</span><span style="font-size: 13px; color: var(--muted);">Founder</span></div>
+        <div class="row" style="border-bottom: 0; flex-wrap: wrap;"><span style="flex-grow: 1; font-weight: 500;">Ines Varga</span><span class="pill" style="background: var(--accent-soft); color: var(--accent-ink);">Also on Quillfern’s board</span><span style="font-size: 13px; color: var(--muted);">Board member</span></div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">Ownership</h2>
+      <div class="card">
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Osprey &amp; Loom Ventures</span><span class="pill" style="background: var(--accent-soft); color: var(--accent-ink);">Also backs a Lumenoak rival</span></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Northvane Capital</span><span style="font-size: 13px; color: var(--muted);">Also in Bramblewick</span></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Fernhollow Angels</span></div>
+        <div class="row" style="border-bottom: 0;"><span style="flex-grow: 1; color: var(--muted);">Subsidiary</span><span>Halvard Payments Ireland Ltd</span></div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">Funding</h2>
+      <div class="card">
+        <div class="row"><span style="width: 72px; color: var(--faint);">Mar 2026</span><span style="flex-grow: 1;">Series A · Osprey &amp; Loom</span><span style="font-weight: 600;">€18.0M</span></div>
+        <div class="row"><span style="width: 72px; color: var(--faint);">2024</span><span style="flex-grow: 1;">Seed · Northvane Capital</span><span style="font-weight: 600;">€4.2M</span></div>
+        <div class="row" style="border-bottom: 0;"><span style="width: 72px; color: var(--faint);">2022</span><span style="flex-grow: 1;">Pre-seed · —</span><span style="font-weight: 600; color: var(--faint);">—</span></div>
+      </div>
+      <span style="font-size: 12px; color: var(--faint);">Amounts in other currencies converted with Cala’s exchange rate for the round date.</span>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px;">
+      <h2 class="h">Closest rivals</h2>
+      <div class="card">
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Quillfern Pay</span><span style="font-size: 13px; color: var(--muted);">Porto · €11M</span><span class="pill" style="background: #F0F0F2; color: var(--muted);">Your portfolio</span></div>
+        <div class="row"><span style="flex-grow: 1; font-weight: 500;">Brisa Ledger</span><span style="font-size: 13px; color: var(--muted);">Madrid · €26M</span></div>
+        <div class="row" style="border-bottom: 0;"><span style="flex-grow: 1; font-weight: 500;">Tollgate</span><span style="font-size: 13px; color: var(--muted);">Milan · €15M</span></div>
+      </div>
+    </section>
+
+    <div style="display: flex; gap: 8px;">
+      <button type="button" style="height: 44px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 14px; font-weight: 500;">Watch this company</button>
+      <button type="button" style="height: 44px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--card); font-size: 14px; font-weight: 500;">Re-run</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2200}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

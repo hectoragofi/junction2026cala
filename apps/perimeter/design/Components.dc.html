@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Components and states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#FFFFFF;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--line-2:#DCDCE0;--accent:#3D5AFE;--accent-soft:#EEF1FF;--accent-ink:#2A40C7}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.src{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.cap{font-size:12px;font-weight:500;color:var(--faint)}
+.btn{height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);font-size:13px;font-weight:500}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1260px; box-sizing: border-box; padding: 64px; background: var(--bg); display: flex; flex-direction: column; gap: 40px;">
+  <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.02em;">Components and states</h1>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start;">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <section class="card">
+        <span class="cap">Source chip</span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button type="button" class="src">Cala · funding round</button>
+          <button type="button" class="src">Harbourline · 12 Nov</button>
+          <button type="button" class="src" style="border-color: var(--ink); color: var(--ink);">Hover</button>
+          <button type="button" class="src">+2</button>
+        </div>
+      </section>
+      <section class="card">
+        <span class="cap">Labels</span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <span class="pill" style="background: var(--accent); color: #fff;">High</span>
+          <span class="pill" style="border: 1px solid var(--line-2);">Medium</span>
+          <span class="pill" style="border: 1px solid var(--line); color: var(--muted);">Low</span>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <span class="pill" style="border: 1px solid var(--ink);">Confirmed</span>
+          <span class="pill" style="background: #F0F0F2; color: var(--muted);">Reported</span>
+          <span class="pill" style="border: 1.5px dashed var(--muted);">Possible match · 72%</span>
+          <span class="pill" style="background: var(--accent-soft); color: var(--accent-ink);">Investor overlap</span>
+        </div>
+        <p style="margin: 0; font-size: 13px; color: var(--muted);">Confirmed has a solid outline. Reported is a grey fill. Possible match is dashed.</p>
+      </section>
+      <section class="card">
+        <span class="cap">Running a check</span>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+          <span style="display: flex; gap: 10px; align-items: center;"><span style="width: 18px; height: 18px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center;">✓</span>Matching the company</span>
+          <span style="display: flex; gap: 10px; align-items: center;"><span style="width: 18px; height: 18px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center;">✓</span>Checking Cala</span>
+          <span style="display: flex; gap: 10px; align-items: center; font-weight: 600;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--accent); box-sizing: border-box;"></span>Reading the news <span style="font-weight: 400; color: var(--faint);">14 of 27</span></span>
+          <span style="display: flex; gap: 10px; align-items: center; color: var(--faint);"><span style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid var(--line-2); box-sizing: border-box;"></span>Mapping rivals</span>
+        </div>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <section class="card" style="box-shadow: 0 12px 32px rgba(0,0,0,0.08); border-color: var(--line-2);">
+        <div style="display: flex; justify-content: space-between; align-items: center;"><span class="cap">Source · article</span><button type="button" aria-label="Close" style="border: 0; background: none; color: var(--faint); font-size: 18px; width: 32px; height: 32px;">×</button></div>
+        <span style="font-size: 15px; font-weight: 600;">Port operator files claim over unpaid fees</span>
+        <span style="font-size: 13px; color: var(--muted);">Harbourline Daily · 12 Nov 2026 · <a href="#" style="color: var(--accent-ink);">Open article</a></span>
+        <p style="margin: 0; padding: 12px 14px; background: var(--bg); border-radius: 10px; font-size: 14px; color: var(--muted);">“…a claim was lodged against <mark style="background: var(--accent-soft); color: var(--ink); border-radius: 4px; padding: 0 3px;">Tessaro Freight Ltd</mark> over handling fees…”</p>
+      </section>
+      <section class="card" style="box-shadow: 0 12px 32px rgba(0,0,0,0.08); border-color: var(--line-2);">
+        <span class="cap">Source · page change</span>
+        <span style="font-size: 13px; color: var(--muted);">marrowgate.example/pricing · 12 Nov, 22:10</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+          <span style="padding: 8px 12px; border-radius: 10px; background: var(--bg); color: var(--faint);"><s>Starter €49 / seat</s></span>
+          <span style="padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink); font-weight: 500;">Starter €29 / seat</span>
+        </div>
+      </section>
+      <section class="card" style="box-shadow: 0 12px 32px rgba(0,0,0,0.08); border-color: var(--line-2);">
+        <span class="cap">Source · Cala</span>
+        <span style="font-size: 14px;">Funding round record, Corvel Series B</span>
+        <span style="font-size: 13px; color: var(--muted);">Cala · 4 Nov 2026</span>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <section class="card" style="align-items: center; text-align: center; padding: 32px 22px;">
+        <span style="width: 40px; height: 40px; border-radius: 999px; background: #F0F0F2; display: flex; align-items: center; justify-content: center; font-size: 18px;">✓</span>
+        <span style="font-size: 16px; font-weight: 600;">No adverse findings</span>
+        <span style="font-size: 13px; color: var(--muted);">In Cala and 19 news articles, 13 Nov 2025 – 13 Nov 2026.</span>
+      </section>
+      <section class="card" style="align-items: center; text-align: center; padding: 32px 22px;">
+        <span style="font-size: 16px; font-weight: 600;">All quiet</span>
+        <span style="font-size: 13px; color: var(--muted);">Watching 4 companies, 17 rivals and 23 investors.</span>
+      </section>
+      <section class="card">
+        <span class="cap">Not found</span>
+        <span style="font-size: 14px;">“Pebbleworth Studio” isn’t in Cala.</span>
+        <button type="button" class="btn" style="align-self: flex-start;">Try another spelling</button>
+      </section>
+      <section class="card">
+        <span class="cap">Source error</span>
+        <span style="font-size: 14px;">News search didn’t respond. Showing Cala results only.</span>
+        <button type="button" class="btn" style="align-self: flex-start;">Retry</button>
+      </section>
+      <section class="card">
+        <span class="cap">Unverified</span>
+        <span style="font-size: 14px; color: var(--muted);">Corvel opened 14 sales roles in Germany</span>
+        <span class="pill" style="align-self: flex-start; background: #F0F0F2; color: var(--muted);">Unverified · one fact has no source</span>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
