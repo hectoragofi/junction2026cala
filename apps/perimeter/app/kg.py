@@ -117,7 +117,7 @@ def clean_name(name: str) -> str:
 def short_company(name: str) -> str:
     """'Revolut Ltd' -> 'Revolut' for prose."""
     n = clean_name(name)
-    n2 = re.sub(r"[,\s]+(Ltd\.?|Limited|LLC|L\.?P\.?|LLP|GmbH|Inc\.?|S\.?A\.?S?\.?|B\.?V\.?|N\.?V\.?|PLC\.?|AG|AB|SE)$",
+    n2 = re.sub(r"[,\s]+(Ltd\.?|Limited|LLC|L\.?P\.?|LLP|GmbH|Inc\.?|S\.?A\.?S?\.?|B\.?V\.?|N\.?V\.?|PLC\.?|AG|AB|SE|S\.r\.l\.?|S\.p\.A\.?|SRL|SpA)$",
                 "", n, flags=re.I)
     return n2.strip() or n
 
@@ -165,7 +165,8 @@ def months_ago(d: str | None) -> float | None:
     if not d:
         return None
     try:
-        y, m, dd = (int(x) for x in d[:10].split("-"))
+        parts = [int(x) for x in d[:10].split("-")] + [1, 1]
+        y, m, dd = parts[:3]
         return (TODAY - date(y, m, dd)).days / 30.44
     except Exception:
         return None
@@ -463,7 +464,7 @@ def investors_of(ent: dict, events: list[dict]) -> list[dict]:
     me = ent["name"]
     out: dict[str, dict] = {}
 
-    def add(e: dict, sources: list[dict], when: str | None, rnd: str | None):
+    def add(e: dict, sources: list[dict], when: str | None, rnd: str | None, amount: str | None = None):
         if e["id"] == ent["id"] or same_org(e["name"], me):
             return
         k = norm_key(e["name"]) or e["id"]
@@ -475,7 +476,7 @@ def investors_of(ent: dict, events: list[dict]) -> list[dict]:
             inv["ids"].append(e["id"])
         inv["sources"] = merge_sources(inv["sources"], sources)
         if when or rnd:
-            inv["rounds"].append({"date": when, "round": rnd})
+            inv["rounds"].append({"date": when, "round": rnd, "amount": amount, "sources": sources[:2]})
 
     for e in ent.get("inc", {}).get("INVESTED_IN", []):
         add(e, e["sources"], None, None)
@@ -484,7 +485,8 @@ def investors_of(ent: dict, events: list[dict]) -> list[dict]:
             continue
         for p in ev["participants"]:
             if (p.get("role") or "").upper() == "INVESTOR":
-                add(p, ev["sources"][:3], ev.get("date"), ev.get("round") or _round_from_desc(ev["description"]))
+                add(p, ev["sources"][:3], ev.get("date"), ev.get("round") or _round_from_desc(ev["description"]),
+                    ev.get("amount"))
     res = list(out.values())
     for inv in res:
         ds = sorted(r["date"] for r in inv["rounds"] if r.get("date"))
@@ -603,6 +605,68 @@ def _words(t: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9€£$]{4,}", strip_accents(t.lower()))}
 
 
+_STOP = set("that this with from were have been their which about after over into under they them also than such "
+            "when other more most only said says will would could should against following since including "
+            "company companies answer reported reports according these those there where while being across "
+            "described noted notes states stated mentioned".split())
+
+
+def _stems(t: str) -> set[str]:
+    return {w[:5] for w in _words(t) if w not in _STOP and not w.isdigit()}
+
+
+def _money(t: str) -> set[str]:
+    return {m.group(0).replace(" ", "").lower() for m in _MONEY.finditer(t)}
+
+
+def _domain(url: str | None) -> str | None:
+    m = re.match(r"https?://(?:www\.)?([^/]+)", url or "")
+    return m.group(1) if m else None
+
+
+def _relevant_sources(step_refs: list[dict], all_ctx: list[dict], ent: str, title: str, body: str,
+                      cap: int = 3) -> list[dict]:
+    """Only sources that are actually about this finding.
+
+    A source counts when its page title/URL names the company, or its snippet names the company and shares the
+    finding's key terms (or amount). Pages whose title is about something else but whose snippet backs the finding
+    are shown by domain, so the chip never reads as an unrelated headline.
+    """
+    key = _stems(title + " " + body[:500]) - {ent[:5]}
+    money = _money(title + " " + body)
+    step_ids = {id(k) for k in step_refs}
+    cands = list(step_refs) + [k for k in all_ctx if id(k) not in step_ids]
+    scored = []
+    for k in cands:
+        from_step = id(k) in step_ids
+        snip = k.get("content") or ""
+        ls = strip_accents(snip.lower())
+        ov = len(_stems(snip) & key)
+        snip_ok = ent in ls and (bool(money & _money(snip)) or ov >= (3 if from_step else 5))
+        for o in k.get("origins") or []:
+            d, s = o.get("document") or {}, o.get("source") or {}
+            name = (d.get("name") or s.get("name") or "").strip()
+            url = d.get("url") or s.get("url")
+            hay = strip_accents(f"{name} {url or ''}".lower())
+            title_ok = ent in hay and (from_step or snip_ok or len(_stems(name) & key) >= 1)
+            if not (title_ok or snip_ok):
+                continue
+            disp = name if title_ok and name else (_domain(url) or s.get("name") or name)
+            if not disp:
+                continue
+            scored.append((2 * title_ok + from_step + min(ov, 10) / 10, {"name": disp[:160], "url": url,
+                                                                       "date": None}))
+    scored.sort(key=lambda x: -x[0])
+    out, seen = [], set()
+    for _, s in scored:
+        k = (s["url"] or s["name"], s["name"].lower()[:60])
+        if k[0] in seen or k[1] in seen:
+            continue
+        seen.update(k)
+        out.append(s)
+    return out[:cap]
+
+
 def _severity(cat: str, text: str) -> str:
     lt = text.lower()
     sev = {"sanctions": "high", "regulatory": "medium", "legal": "medium", "news": "low"}[cat]
@@ -613,18 +677,109 @@ def _severity(cat: str, text: str) -> str:
     return sev
 
 
+# ---- headline writing: turn an LLM section heading / evidence sentence into a clean feed headline
+_MON = "|".join(MONTHS + [m[:3] for m in MONTHS])
+_DATE_PHRASE = re.compile(
+    r"\s*,?\s*\b(?:(?:in|on|since|during|by|from|between|around|as of)\s+)?(?:(?:early|late|mid)[\s-]+)?"
+    r"(?:(?:\d{1,2}\s+)?(?:" + _MON + r")\.?(?:\s+\d{1,2})?,?(?:\s*[-‐‑–—]\s*(?:\d{1,2}\s+)?(?:" + _MON + r")\.?)?"
+    r"\s+20\d\d|(?:Q[1-4]|H[12])\s+20\d\d|20\d\d\s*[-‐‑–—]\s*(?:20\d\d|ongoing|present)|(?<=in )20\d\d)\b",
+    re.I)
+_INTRO = re.compile(r"^(?:the answer (?:states|reports|notes|mentions|describes|says)(?: that)?\s+|"
+                    r"(?:reports|sources) (?:say|show|indicate) that\s+|according to [^,]+,\s+)", re.I)
+_CLAUSE = re.compile(r"\s*(?:;|:|\s[—–]\s|\s-\s|,\s+(?=(?:which|who|whom|where|as|after|following|including|"
+                     r"according|while|though|although|despite|but|amid|with|and\s+(?:is|was|has|had)|"
+                     r"\w+ing)\b))", re.I)
+_BAD_START = re.compile(r"^(?:this|these|that|those|it|its|they|the investigation|the fine|the case|the lawsuit|"
+                        r"despite|because|since|no|none|although|however|both|the only|the provided|the facts|who|"
+                        r"whom|which|background|the \w+ (?:article|report|analysis|entry|record)|"
+                        r"an? \w+ (?:article|report)|and|but|or|also)\b",
+                        re.I)
+
+
+def _tidy(s: str) -> str:
+    s = re.sub(r"\*+|_{2,}|`", "", s)
+    s = re.sub(r"\s*\([^()]*\)", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+([,.;:])", r"\1", s)
+    s = re.sub(r"[‐‑]", "-", s)
+    return s
+
+
+def headline(sentence: str, ent: str, limit: int = 100) -> str | None:
+    """Shortest leading clause run of an evidence sentence that names the company, without dates/brackets."""
+    s = _INTRO.sub("", _tidy(sentence))
+    s = _tidy(_DATE_PHRASE.sub("", s))
+    parts = _CLAUSE.split(s)
+    out = ""
+    for p in parts:
+        out = f"{out}, {p}" if out else p
+        if ent in strip_accents(out.lower()):
+            break
+    out = out.strip(" ,.;:—–-")
+    if not out or ent not in strip_accents(out.lower()) or len(out) > limit or _BAD_START.match(out):
+        return None
+    if re.search(r"\b(?:no|not|never|without|dated)\b", out, re.I) or len(out.split()) < 4 \
+            or out.count("(") != out.count(")") or out.count("“") != out.count("”") or out.count('"') % 2:
+        return None
+    return out[:1].upper() + out[1:]
+
+
+def _sentence_case(topic: str, evidence: str) -> str:
+    """'Customer Data Exposure Incident' -> 'customer data exposure incident'. Words the evidence capitalises
+    mid-sentence (Italy, Google, Fifth Circuit), acronyms and CamelCase keep their case."""
+    def fix(m):
+        core = m.group(0)
+        if core[:1].isupper() and core[1:].islower() and \
+                not re.search(rf"[A-Za-z,;]\s+{re.escape(core)}\b", evidence):
+            return core.lower()
+        return core
+    return re.sub(r"[A-Za-z]+", fix, topic)
+
+
+def topic_headline(topic: str, short: str, evidence: str, cat: str | None) -> str:
+    """Fallback when no evidence sentence works: the section heading turned into a sentence."""
+    t = _tidy(_DATE_PHRASE.sub("", _tidy(topic)))
+    t = re.sub(r"\s+[—–-]\s+", ": ", t).strip(" ,.;:—–-")
+    t = _sentence_case(t, evidence)
+    left, sep, right = t.partition(": ")
+    if sep and right and len(left.split()) <= 4 and all(w[:1].isupper() for w in left.split()):
+        t = f"{right} in {left}"  # "Lithuania: €3.5 million AML fine" -> "€3.5 million AML fine in Lithuania"
+    if strip_accents(short.lower()) in strip_accents(t.lower()):
+        return t[:1].upper() + t[1:]
+    if re.match(r"^[A-Z][\w.&-]*\s+(?:imposes|fines|hits|orders|bans|sues|charges|opens|launches|probes|"
+                r"restricts|sanctions|warns)\b", t):
+        return f"{t} on {short}"  # "BaFin imposes new sanctions" -> "... on N26"
+    if cat == "news":
+        return f"{t[:1].upper() + t[1:]} at {short}"
+    return f"{short} faces {t}"
+
+
+def extract_date_p(text: str) -> str | None:
+    """Like extract_date but keeps precision: 'YYYY-MM-DD', 'YYYY-MM' or None."""
+    t = text.lower()
+    if re.search(r"\b(\d{1,2})\s+(" + "|".join(MONTHS) + r")\s+(20\d\d)", t) or \
+            re.search(r"\b(" + "|".join(MONTHS) + r")\s+(\d{1,2}),?\s+(20\d\d)", t):
+        return extract_date(text)
+    d = extract_date(text)
+    return d[:7] if d else None
+
+
 def parse_screen(res: dict, name: str) -> dict:
     """Conservative parse of a knowledge_search screening answer into findings.
 
     Prefers the answer's numbered sections ("### 1. Lithuania — EUR 3.5m AML fine"), each backed by the
     explainability steps that talk about it; falls back to the steps themselves. Anything phrased as a
-    negative ("no other fines…"), not about the company, or without a source is dropped.
+    negative ("no other fines…"), not about the company, or without a matching source is dropped.
     """
     content = (res or {}).get("content") or ""
     ctx = {k["id"]: k for k in (res or {}).get("context") or [] if k.get("id")}
+    all_ctx = list(ctx.values())
     steps = [st for st in (res or {}).get("explainability") or [] if st.get("content")]
     first = (norm_tokens(name) or [""])[0]
-    cands = []  # (title, body, refs)
+    short = short_company(name).split(" ")[0] if first else name
+    if first and strip_accents(short.lower()) != first:
+        short = short_company(name)
+    cands = []  # (heading, body, refs, evidence sentences, from_sections)
     secs = re.split(r"^#{2,4}\s*\d+\.\s*", content, flags=re.M)[1:]
     if secs:
         for sec in secs:
@@ -635,67 +790,90 @@ def parse_screen(res: dict, name: str) -> dict:
             if NEG_RE.search(title) or title.lower().startswith("no "):
                 continue
             tw = _words(title + " " + body[:600])
-            tm = {m.group(0).replace(" ", "") for m in _MONEY.finditer(title + " " + body)}
-            refs = []
+            ts = _stems(title)
+            tm = _money(title + " " + body)
+            refs, ev = [], []
             for st in steps:
-                sm = {m.group(0).replace(" ", "") for m in _MONEY.finditer(st["content"])}
+                sm = _money(st["content"])
                 ov = len(_words(st["content"]) & tw)
                 if (tm & sm) or ov >= 6:
                     refs += [ctx[r] for r in st.get("references") or [] if r in ctx]
+                    ev.append((3 * len(_stems(st["content"]) & ts) + ov + 4 * bool(tm & sm), st["content"]))
             if not refs and len(secs) == 1:
                 refs = [ctx[r] for st in steps for r in st.get("references") or [] if r in ctx]
             sents = re.split(r"(?<=[.!?])\s+", body.replace("\n", " "))
-            cands.append((title, " ".join(sents[:3]).strip(), refs))
+            ev += [(3 * len(_stems(x) & ts) + 2 - i, x) for i, x in enumerate(sents[:3])]
+            ev = [x for _, x in sorted(ev, key=lambda x: -x[0])]
+            cands.append((title, " ".join(sents[:3]).strip(), refs, ev, True))
     elif not NEG_RE.search(content[:900]):
         seen_money: set[str] = set()
         for st in steps:
             body = st["content"].strip()
-            money = {m.group(0).replace(" ", "") for m in _MONEY.finditer(body)}
+            money = _money(body)
             if money and money & seen_money:
                 continue
             seen_money |= money
-            cands.append((_short_title(body), body, [ctx[r] for r in st.get("references") or [] if r in ctx]))
+            cands.append(("", body, [ctx[r] for r in st.get("references") or [] if r in ctx], [body], False))
 
-    findings = []
-    for title, body, refs in cands:
-        text = f"{title}. {body}"
+    findings, seen_titles = [], set()
+    for heading, body, refs, ev, from_sec in cands:
+        heading_h = html.unescape(heading)
+        body = html.unescape(body)
+        text = f"{heading_h}. {body}"
         lt = strip_accents(text.lower())
-        if NEG_RE.search(title) or (not secs and re.search(r"\b(no|not|without|only positive)\b", body, re.I)):
+        if from_sec and NEG_RE.search(heading_h):
+            continue
+        if not from_sec and re.search(r"\b(no|not|without|only positive)\b", body, re.I):
             continue
         if first and first not in lt:
             continue
-        cat = _classify(title) or _classify(text)
+        hs = _stems(heading_h) - {first[:5]}
+        need = max(1, (len(hs) + 1) // 2)
+        lines = []
+        for x in ev:
+            h = headline(html.unescape(x), first)
+            # an evidence line must stay on the section's topic; it reads best when the company is the subject
+            if h and (not from_sec or not hs or len(_stems(h) & hs) >= need):
+                lines.append((not strip_accents(h.lower()).startswith(first), len(lines), h))
+        title = min(lines)[2] if lines else None
+        if not title:
+            if not from_sec:
+                continue
+            title = topic_headline(heading_h, short, " ".join([body, *ev]), _classify(heading_h))
+        # classify on the cleaned headline first: a step only *mentioning* compliance is not a finding
+        cat = _classify(heading_h) or _classify(title) or (_classify(text) if from_sec else None)
         if not cat:
             continue
-        sources = _ks_sources(refs)
+        sources = _relevant_sources(refs, all_ctx, first, heading_h or title, body) if first else _ks_sources(refs)
         if not sources:
-            continue  # unsourced claims are dropped
-        when = extract_date(body) or extract_date(title)
+            continue  # unsourced (or only off-topic sources): drop rather than mis-cite
+        when = extract_date_p(body) or extract_date_p(heading_h)
         if not when:
-            m = re.search(r"\((20\d\d)\)", title)
-            when = f"{m.group(1)}-01-01" if m else None
+            m = re.search(r"\((?:[^)]*\D)?(20\d\d)\)", heading_h)
+            when = m.group(1) if m else None
+        if when and when[:7] > TODAY.isoformat()[:7]:
+            when = None
         sev = _severity(cat, text)
         age = months_ago(when)
         if age is not None and age > 24:
             continue
         if age is not None and age > 18 and sev == "medium":
             sev = "low"
-        title, body = html.unescape(title), html.unescape(body)
-        findings.append({"severity": sev, "status": "reported", "category": cat, "title": title[:110],
-                         "body": body[:600], "date": when, "sources": sources})
+        key = norm_key(title)
+        if key in seen_titles:
+            continue
+        seen_titles.add(key)
+        sents = re.split(r"(?<=[.!?])\s+", _tidy(body))
+        clean_body = " ".join(sents[:3]).strip()
+        findings.append({"severity": sev, "status": "reported", "category": cat, "title": title,
+                         "body": clean_body[:600], "date": when, "sources": sources})
     sanc = [f for f in findings if f["category"] == "sanctions"]
-    all_src = _ks_sources(list(ctx.values())[:8])
+    all_src = _ks_sources(all_ctx[:8])
     return {"findings": findings, "screened": len(ctx),
             "sanctions": {"clear": not sanc, "screened": len(ctx),
                           "text": (f"Possible sanctions exposure reported across {len(ctx)} sources" if sanc else
                                    f"No sanctions matches across {len(ctx)} screened sources"),
                           "sources": merge_sources(*[f["sources"] for f in sanc]) if sanc else all_src[:3]}}
-
-
-def _short_title(body: str) -> str:
-    s = re.split(r"(?<=[a-z0-9\)])[.;]\s|, (?:which|confirming|matching|supporting|aligning|as reported)", body)[0]
-    s = re.sub(r",? (?:confirming|matching|supporting|aligning).*$", "", s)
-    return s if len(s) <= 110 else s[:107].rsplit(" ", 1)[0] + "…"
 
 
 async def screen(name: str, hint: str | None = None, only_cached: bool = False) -> dict | None:

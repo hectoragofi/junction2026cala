@@ -122,15 +122,18 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
     # ---- investor touches: key -> {company_id: sources}
     inv_touch: dict[str, dict] = {}
 
-    def touch_inv(inv: dict, cid: str, sources: list[dict]):
+    def touch_inv(inv: dict, cid: str, sources: list[dict], rounds: list[dict] | None = None):
         k = norm_key(inv["name"]) or inv["id"]
-        t = inv_touch.setdefault(k, {"inv": inv, "companies": {}})
+        t = inv_touch.setdefault(k, {"inv": inv, "companies": {}, "rounds": {}})
         prev = t["companies"].get(cid, [])
         t["companies"][cid] = merge_sources(prev, sources, cap=4)
+        if rounds:
+            seen = {(r.get("date"), r.get("round")) for r in t["rounds"].get(cid, [])}
+            t["rounds"].setdefault(cid, []).extend(r for r in rounds if (r.get("date"), r.get("round")) not in seen)
 
     for c in list(port) + list(rivals.values()):
         for inv in c["investors"]:
-            touch_inv(inv, c["id"], inv["sources"])
+            touch_inv(inv, c["id"], inv["sources"], inv.get("rounds"))
     # investor-side edges (catches rivals whose own record lacks the investor)
     for c in port:
         for inv in c["investors"]:
@@ -198,6 +201,29 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
         u = universe[cid]
         return {"id": cid, "name": u["name"], "type": "Company"}
 
+    # ---- overlap paths: the chain of Cala edges that makes an overlap, each edge with its own sources
+    rival_sub = {(c["id"], r["id"]): r.get("sub") for c in port for r in c["rivals"]}
+
+    def node(ref: dict, role: str, edge: dict | None = None) -> dict:
+        n = {"entity": {**ref, "role": role}}
+        if edge:
+            n["edge_to_next"] = edge
+        return n
+
+    def role_of(cid: str) -> str:
+        return "portfolio" if universe[cid]["kind"] == "portfolio" else "rival"
+
+    def rival_edge(r: str, rp: str) -> dict:
+        return {"label": "rival of", "note": rival_sub.get((rp, r)),
+                "sources": [{"name": "Cala · closest competitors", "url": None, "date": None}]}
+
+    def inv_edge(t: dict, cid: str, label: str) -> dict:
+        rs = sorted(t["rounds"].get(cid, []), key=lambda x: x.get("date") or "", reverse=True)[:3]
+        e = {"label": label, "sources": t["companies"][cid][:4]}
+        if rs:
+            e["rounds"] = [{k: v for k, v in r.items() if v} for r in rs]
+        return e
+
     # ---- investor overlaps
     for k, t in inv_touch.items():
         cids = list(t["companies"])
@@ -216,12 +242,16 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                 rp = direct[0] if direct else rival_of[r][0]
                 sev = "high" if direct else "medium"
                 rel = f"rival of {universe[rp]['name']}"
+                iname = short_company(inv["name"])
                 if direct:
-                    title = f"{inv['name']} backs {universe[p]['name']} and its rival {universe[r]['name']}"
+                    title = f"{iname} backs {universe[p]['name']} and its rival {universe[r]['name']}"
                 else:
-                    title = (f"{inv['name']} backs {universe[p]['name']} and {universe[r]['name']}, "
+                    title = (f"{iname} backs {universe[p]['name']} and {universe[r]['name']}, "
                              f"a rival of {universe[rp]['name']}")
                 srcs = merge_sources(t["companies"][p], t["companies"][r], cap=6)
+                path = [node(cref(p), "portfolio", inv_edge(t, p, "backed by")),
+                        node(iref, "shared", inv_edge(t, r, "also backs")),
+                        node(cref(r), "rival", rival_edge(r, rp)), node(cref(rp), "portfolio")]
                 body = (f"Cala lists {inv['name']} as an investor in both {universe[p]['name']} and "
                         f"{universe[r]['name']}"
                         + (f", one of {universe[p]['name']}'s closest competitors. " if direct else
@@ -232,13 +262,15 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                     "status": "confirmed", "title": title, "body": body,
                     "date": _latest(srcs), "company": cref(p),
                     "subject": {**cref(r), "relation": rel}, "investor": iref,
-                    "sources": srcs, "actions": ["draft_note"]})
-                signals.append({"kind": "Shared investor", "text": title,
+                    "sources": srcs, "actions": ["draft_note"], "path": path})
+                signals.append({"kind": "Shared investor", "text": title, "path": path,
                                 "entities": [iref, cref(p), cref(r)], "sources": srcs[:4], "severity": sev})
         if len(ps) > 1:
-            text = f"{inv['name']} backs " + _join([universe[x]["name"] for x in ps])
+            text = f"{short_company(inv['name'])} backs " + _join([universe[x]["name"] for x in ps])
             srcs = merge_sources(*[t["companies"][x] for x in ps], cap=6)
-            signals.append({"kind": "Shared investor", "text": text,
+            path = [node(cref(ps[0]), "portfolio", inv_edge(t, ps[0], "backed by")),
+                    node(iref, "shared", inv_edge(t, ps[1], "also backs")), node(cref(ps[1]), "portfolio")]
+            signals.append({"kind": "Shared investor", "text": text, "path": path,
                             "entities": [iref] + [cref(x) for x in ps], "sources": srcs[:4], "severity": "info"})
 
     # ---- people overlaps
@@ -264,6 +296,11 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
             title = (f"{p['name']} ({prole}, {universe[pc]['name']}) also "
                      f"{_verb(rrole, t['companies'][r]['board'])} {universe[r]['name']}")
             srcs = merge_sources(t["companies"][pc]["sources"], t["companies"][r]["sources"])
+            path = [node(cref(pc), "portfolio", {"label": prole.lower() if prole else "linked",
+                                                 "sources": t["companies"][pc]["sources"][:4]}),
+                    node(pref, "shared", {"label": f"{(rrole or 'linked').lower()} at",
+                                          "sources": t["companies"][r]["sources"][:4]}),
+                    node(cref(r), "rival", rival_edge(r, rp)), node(cref(rp), "portfolio")]
             items.append({
                 "id": _id("per", k, r), "kind": kind, "category": "Overlaps", "severity": sev,
                 "status": "confirmed", "title": title,
@@ -271,13 +308,18 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                         f" ({'direct rival' if direct else 'rival of ' + universe[rp]['name']}).",
                 "date": _latest(srcs), "company": cref(pc),
                 "subject": {**cref(r), "relation": f"rival of {universe[rp]['name']}"}, "person": pref,
-                "sources": srcs, "actions": ["draft_note"]})
-            signals.append({"kind": "Board seat" if board else "Talent", "text": title,
+                "sources": srcs, "actions": ["draft_note"], "path": path})
+            signals.append({"kind": "Board seat" if board else "Talent", "text": title, "path": path,
                             "entities": [pref, cref(pc), cref(r)], "sources": srcs[:4], "severity": sev})
         if len(ps) > 1:
             text = f"{p['name']} sits across " + _join([universe[x]["name"] for x in ps])
             srcs = merge_sources(*[t["companies"][x]["sources"] for x in ps])
-            signals.append({"kind": "Board seat" if board else "Talent", "text": text,
+            path = [node(cref(ps[0]), "portfolio", {"label": (t["companies"][ps[0]]["role"] or "linked").lower(),
+                                                    "sources": t["companies"][ps[0]]["sources"][:4]}),
+                    node(pref, "shared", {"label": f"{(t['companies'][ps[1]]['role'] or 'linked').lower()} at",
+                                          "sources": t["companies"][ps[1]]["sources"][:4]}),
+                    node(cref(ps[1]), "portfolio")]
+            signals.append({"kind": "Board seat" if board else "Talent", "text": text, "path": path,
                             "entities": [pref] + [cref(x) for x in ps], "sources": srcs[:4], "severity": "info"})
 
     # ---- corporate events (funding, M&A) for portfolio and rivals
@@ -296,13 +338,12 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                 label = event_label(ev, c["name"], role)
                 amt = f" {ev['amount']}" if ev.get("amount") else ""
                 if is_port:
-                    title = f"{c['name']} raised{amt} ({label})" if label != "Funding round" else \
-                        f"{c['name']} raised{amt or ' a new round'}"
+                    title = f"{short_company(c['name'])} raised{amt or ' a new round'}{_round_phrase(label)}"
                     sev = "info"
                     company, subject = cref(c["id"]), None
                 else:
                     rp = rival_of[c["id"]][0]
-                    title = f"Rival {c['name']} raised{amt}" + (f" ({label})" if label != "Funding round" else "")
+                    title = f"{short_company(c['name'])} raised{amt or ' a new round'}{_round_phrase(label)}"
                     sev = "medium" if age <= 12 else "low"
                     company = cref(rp)
                     subject = {**cref(c["id"]), "relation": f"rival of {universe[rp]['name']}"}
@@ -348,7 +389,6 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                     rp = rival_of[acq_id][0]
                     sev, company = ("medium" if (age or 99) <= 12 else "low"), cref(rp)
                     subject = {**cref(acq_id), "relation": f"rival of {universe[rp]['name']}"}
-                    title = f"Rival {title}"
                 elif is_port:
                     sev, company, subject = "info" if role == "ACQUIRER" else "high", cref(c["id"]), None
                 else:
@@ -372,10 +412,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
     for c in port:
         s = screens.get(c["id"])
         for f in (s or {}).get("findings", []):
-            f2 = dict(f)
-            if c["name"].lower() not in f["title"].lower():
-                f2["title"] = f"{c['name']}: {f['title']}"
-            items.append(_finding_item(f2, cref(c["id"]), None))
+            items.append(_finding_item(dict(f), cref(c["id"]), None))
     for rid, s in rival_screens.items():
         if not s or rid not in rival_of:
             continue
@@ -383,8 +420,6 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
         for f in s.get("findings", [])[:3]:
             f2 = dict(f)
             f2["severity"] = "low" if f["severity"] != "high" else "medium"
-            f2["title"] = f"Rival {universe[rid]['name']}: {f['title']}" if universe[rid]["name"].lower() not in \
-                f["title"].lower() else f["title"]
             items.append(_finding_item(f2, cref(rp), {**cref(rid), "relation": f"rival of {universe[rp]['name']}"}))
 
     # dedupe ids, sort newest first
@@ -448,6 +483,20 @@ def _finding_item(f: dict, company: dict, subject: dict | None) -> dict:
     if subject:
         it["subject"] = subject
     return it
+
+
+def _round_phrase(label: str | None) -> str:
+    """'Series C' -> ' in a Series C', 'Venture Debt' -> ' in venture debt'."""
+    if not label or label == "Funding round":
+        return ""
+    low = label.lower()
+    if "debt" in low or "grant" in low:
+        return f" in {low}"
+    if low.startswith("series"):
+        return f" in a {label}"
+    if low.startswith(("seed", "pre-seed", "angel", "growth", "bridge")):
+        return f" in {'an' if low[0] in 'aeiou' else 'a'} {low}{'' if 'round' in low else ' round'}"
+    return f" ({label})"
 
 
 def _sev_rank(s: str) -> int:

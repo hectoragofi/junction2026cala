@@ -31,7 +31,7 @@ Fact     = { label: str, value: str, sources: Source[] }
                   people: (EntityRef & {role: str, shared_with?: str[]})[] }],
     stats: { rivals, investors, people, countries, entities, facts },
     signals: [{ kind: "Board seat"|"Shared investor"|"Talent"|"M&A"|"Funding"|..., text: str,
-                entities: EntityRef[], sources: Source[] }] }
+                entities: EntityRef[], sources: Source[], path?: PathNode[] }] }
   ```
   `shared_with` = names of OTHER portfolio companies or rivals the same investor/person touches (the "blue" overlap).
 - `GET /api/feed` →
@@ -44,8 +44,18 @@ Fact     = { label: str, value: str, sources: Source[] }
               title: str, body?: str, date: "YYYY-MM-DD"|null,
               company: EntityRef,           # the portfolio company it concerns
               subject?: EntityRef & {relation: str},   # e.g. {name:"Adyen", relation:"rival of Mollie"}
-              sources: Source[], actions: ("draft_note")[] }] }
+              sources: Source[], actions: ("draft_note")[],
+              path?: PathNode[] }] }        # overlap items only (overlap_investor, overlap_board, hiring)
+  PathNode = { entity: EntityRef & {role: "portfolio"|"shared"|"rival"},
+               edge_to_next?: { label: str,              # reads left to right: "backed by", "also backs", "rival of"
+                                sources: Source[],       # Cala sources for THIS edge only
+                                note?: str,              # e.g. why Cala calls them rivals
+                                rounds?: [{date?, round?, amount?, sources?}] } }
   ```
+  `date` may be "YYYY-MM" or "YYYY" when the source only gives month/year precision.
+  Titles are plain sentences ("Revolut experienced data breaches"); the subject/relation goes in `subject`.
+  Screening sources are only kept when their title/URL or snippet is about the finding; pages whose headline is
+  about something else are shown by domain.
   Items sorted newest first; client groups by date (This week / Earlier this month / Earlier).
 - `GET /api/check/stream?q=<name or entity id>` — **Server-Sent Events**:
   - `event: step` data `{key, label, status: "running"|"done"|"error", detail?: str}` keys in order:
