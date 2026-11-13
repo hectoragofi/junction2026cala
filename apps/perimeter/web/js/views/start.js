@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { renderChrome } from '../app.js';
 import { $, $$, esc, openMenu, toast, plural } from '../ui.js';
 
 const BUILD_LINES = [
@@ -148,7 +149,9 @@ export function renderBuilding(ctx) {
     try {
       const p = await api.portfolio();
       if (!ctx.isCurrent()) return;
+      const hadNav = ctx.store.portfolio?.companies?.length;
       ctx.store.portfolio = p;
+      if (!hadNav && p.companies?.length) renderChrome('feed');
       const list = $('#bList');
       if (list && p.companies?.length) {
         list.innerHTML = p.companies.map(c => `<div class="row"><span class="grow" style="font-weight:500;text-align:left">${esc(c.name)}</span><span class="meta">${esc(c.hq || '')}</span>${p.building ? '<span class="spin" aria-label="Building"></span>' : '<span class="tick">✓</span>'}</div>`).join('');

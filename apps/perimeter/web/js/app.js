@@ -15,7 +15,7 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 export function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
 
-function renderChrome(active) {
+export function renderChrome(active) {
   const hasPf = !!store.portfolio?.companies?.length;
   const bare = active === 'start' && !hasPf;
   const link = (k, label, href) => `<a href="${href}" class="${active === k ? 'on' : ''}" ${active === k ? 'aria-current="page"' : ''}>${label}</a>`;

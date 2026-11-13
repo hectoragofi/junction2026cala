@@ -48,7 +48,7 @@ function run(ctx, q) {
       <div class="card" style="padding:22px;display:flex;flex-direction:column;gap:12px"><div class="sk sk-line" style="width:140px"></div><div class="sk" style="height:16px;width:75%"></div><div class="sk sk-line" style="width:50%"></div></div>
       <div class="card" style="padding:22px;display:flex;flex-direction:column;gap:12px"><div class="sk sk-line" style="width:120px"></div><div class="sk" style="height:16px;width:65%"></div></div>
     </div></main>`;
-  const timer = setInterval(() => { const el = $('#ckT'); if (el) el.textContent = Math.round((Date.now() - t0) / 1000) + ' s'; }, 500);
+  const timer = setInterval(() => { const el = $('#ckT'); if (!el) return; const s = Math.round((Date.now() - t0) / 1000); el.textContent = s < 45 ? s + ' s' : `${s} s · Cala is still reading, larger companies take longer`; }, 500);
   const drawSteps = () => { const el = $('#steps'); if (el) el.innerHTML = STEPS.map(([k, l]) => stepHTML(k, l, steps[k])).join(''); };
   const close = api.check(q, {
     step(s) {
@@ -61,9 +61,9 @@ function run(ctx, q) {
     error(msg) {
       clearInterval(timer);
       if (!ctx.isCurrent()) return;
-      const notFound = /not (be )?found|isn.t in cala|no match|could not match|unknown/i.test(msg);
+      const notFound = /not (be )?found|isn.t in cala|no match|no company match|could not match|unknown|type a company/i.test(msg);
       const main = $('main');
-      main.querySelectorAll('.sec[aria-hidden]').forEach(x => x.remove());
+      main.querySelectorAll('.sec[aria-hidden], .step.pending').forEach(x => x.remove());
       main.insertAdjacentHTML('beforeend', notFound
         ? `<div class="card scard in"><span class="cap">Not found</span><span>“${esc(q)}” isn’t in Cala.</span><button type="button" class="btn" style="align-self:flex-start" id="again">Try another spelling</button></div>`
         : `<div class="card scard in"><span class="cap">Source error</span><span>${esc(msg)}</span><div style="display:flex;gap:8px"><button type="button" class="btn" id="retry">Retry</button><button type="button" class="btn ghost" id="again">Check another company</button></div></div>`);
