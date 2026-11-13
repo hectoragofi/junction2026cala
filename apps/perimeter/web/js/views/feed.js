@@ -197,7 +197,7 @@ async function drawHome(ctx, co) {
       <div class="chips">${rivals.length ? rivals.map(r => entPill({ ...r, type: 'Company' }, shortName(r.name), 'n')).join('') : `<span class="meta">${per.partial ? 'Finding them in Cala…' : 'Cala lists no close rivals yet.'}</span>`}</div></div>
     <div class="fh-row"><div class="fh-h"><span class="cap">Investors around you</span><span class="meta">${hot.length ? `${hot.length} also ${hot.length === 1 ? 'backs' : 'back'} a rival` : inv.length || ''}</span></div>
       <div class="chips">${inv.length ? inv.slice(0, 10).map(pill).join('') + (inv.length > 10 ? `<span class="meta" style="align-self:center">+${inv.length - 10} more</span>` : '') : '<span class="meta">No investors in Cala yet.</span>'}</div></div>
-    <div class="fh-f"><span class="meta">From Cala’s knowledge graph, every edge sourced.</span><a class="btn" href="#/map">See the map</a></div>`;
+    <div class="fh-f"><span class="meta grow">From Cala’s knowledge graph, every edge sourced.</span><a class="btn" href="#/map">See the map</a><a class="btn dark" href="/ask">Ask about ${esc(co)}</a></div>`;
 }
 const shortName = n => String(n || '').replace(/\s+(Fund|Capital)\s+[IVX]+\b.*$/i, '').trim();
 

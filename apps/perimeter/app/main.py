@@ -176,7 +176,11 @@ def _identity(request: Request) -> str | None:
 
 
 def _viewing_demo(request: Request) -> bool:
-    return (request.headers.get("x-view") or request.query_params.get("view") or "") == "demo"
+    """X-View header (app), ?view= (EventSource) or the pview cookie (plain pages such as /ask)."""
+    v = request.headers.get("x-view") or request.query_params.get("view")
+    if v is None and not request.headers.get("x-profile"):
+        v = request.cookies.get("pview")
+    return (v or "") == "demo"
 
 
 def active(request: Request) -> Space:
@@ -758,18 +762,6 @@ async def entity(eid: str):
 
 
 # --------------------------------------------------------------------------- static web
-# Founder-side investor diligence (owned by a separate workstream); enabled once app/investor.py exists.
-try:
-    from .investor import router as investor_router
-except ImportError:
-    investor_router = None
-if investor_router is not None:
-    app.include_router(investor_router)
-
-    @app.get("/investors", include_in_schema=False)
-    async def investors_page():
-        return FileResponse(WEB_DIR / "investor.html", headers={"Cache-Control": "no-cache"})
-
 # Ask anything: Claude answers with generated widgets over Cala (app/agent.py, web/ask.html).
 try:
     from .agent import router as agent_router

@@ -16,8 +16,10 @@ export const who = {
 };
 if (!/^[A-Za-z0-9_-]{8,64}$/.test(who.pid)) { who.pid = newPid(); ls.set(PID_KEY, who.pid); }
 document.cookie = `pid=${who.pid}; path=/; max-age=31536000; SameSite=Lax`;
-export function setView(v) { who.view = v === 'demo' ? 'demo' : 'me'; ls.set(VIEW_KEY, who.view === 'demo' ? 'demo' : null); }
-export function newIdentity() { who.pid = newPid(); ls.set(PID_KEY, who.pid); document.cookie = `pid=${who.pid}; path=/; max-age=31536000; SameSite=Lax`; }
+// plain pages (/ask) only have cookies: mirror the view there too
+const viewCookie = () => { document.cookie = who.view === 'demo' ? 'pview=demo; path=/; max-age=31536000; SameSite=Lax' : 'pview=; path=/; max-age=0; SameSite=Lax'; };
+viewCookie();
+export function setView(v) { who.view = v === 'demo' ? 'demo' : 'me'; ls.set(VIEW_KEY, who.view === 'demo' ? 'demo' : null); viewCookie(); }
 const idHeaders = () => ({ 'X-Profile': who.pid, ...(who.view === 'demo' ? { 'X-View': 'demo' } : {}) });
 
 async function timeoutFetch(url, opts = {}, ms = 4000) {

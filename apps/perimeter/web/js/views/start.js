@@ -73,6 +73,7 @@ export function renderBuilding(ctx) {
       <div class="ph" style="align-items:center"><h1>${founder && co ? `Mapping the market around ${esc(co)}` : viewingDemo() ? 'Mapping the demo portfolio' : 'Mapping your perimeter'}</h1><p id="bLine">${BUILD_LINES[0]}…</p></div>
       <div class="card build-list" id="bList"><div class="row"><div class="sk sk-line grow"></div></div><div class="row"><div class="sk sk-line grow"></div></div></div>
       <span class="meta" id="bTime">Usually under a minute. You can leave this page.</span>
+      ${viewingDemo() ? '' : `<a class="btn" href="/ask">${founder && co ? `Ask about ${esc(co)} while you wait` : 'Ask about your companies while you wait'} →</a>`}
     </section></main>`;
   const lt = setInterval(() => {
     line = (line + 1) % BUILD_LINES.length;

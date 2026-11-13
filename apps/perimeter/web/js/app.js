@@ -68,7 +68,7 @@ export function renderChrome(active) {
   $('#hdr').className = 'hdr' + (bare ? ' bare' : '');
   $('#hdr').innerHTML = `<div class="hdr-in">
     <a href="#/" class="logo" aria-label="Perimeter home"><span class="logo-mark"></span>Perimeter</a>
-    ${hasPf && !bare ? `<nav class="seg" aria-label="Main">${link('feed', 'Feed', '#/')}${link('map', 'Map', '#/map')}${link('check', 'Check', '#/check')}</nav>` : ''}
+    ${hasPf && !bare ? `<nav class="seg" aria-label="Main">${link('feed', 'Feed', '#/')}${link('map', 'Map', '#/map')}${link('check', 'Check', '#/check')}<a href="/ask">Ask</a></nav>` : ''}
     <div class="hdr-right">
       ${apiState.mock ? `<span class="mockbadge" title="${esc(apiState.reason)}">Demo data</span>` : ''}
       ${bare ? '' : `<button type="button" class="askbtn" data-open-ask>Ask anything <kbd class="kbd">${isMac ? '⌘' : 'Ctrl'} K</kbd></button>
@@ -82,7 +82,7 @@ export function renderChrome(active) {
   if (bare) { tb.innerHTML = ''; tb.style.display = 'none'; return; }
   tb.style.display = '';
   const t = (k, label, href) => `<a href="${href}" class="${active === k ? 'on' : ''}" ${active === k ? 'aria-current="page"' : ''}>${ICONS[k]}${label}</a>`;
-  tb.innerHTML = (hasPf ? t('feed', founder ? 'Home' : 'Feed', '#/') + t('map', 'Map', '#/map') : t('feed', 'Start', '#/')) + t('check', 'Check', '#/check') + `<a href="#/ask" class="${active === 'ask' ? 'on' : ''}">${ICONS.ask}Ask</a>`;
+  tb.innerHTML = (hasPf ? t('feed', founder ? 'Home' : 'Feed', '#/') + t('map', 'Map', '#/map') : t('feed', 'Start', '#/')) + t('check', 'Check', '#/check') + `<a href="/ask">${ICONS.ask}Ask</a>`;
 }
 
 let cleanup = null;
