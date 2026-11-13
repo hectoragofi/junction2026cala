@@ -14,10 +14,11 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Doing
 
-- [ ] Profiles + onboarding: per-browser profile (role, my company, portfolio), settings page, role chooser at /, per-profile state (owner: hector, branch: hector/profile)
 
 
 ## Done
+
+- [x] Profiles + onboarding: per-browser profile, seat chooser at /, #/profile, profile context for /ask (owner: hector)
 
 - [x] Ask anything: Claude over Cala answering with generated widgets, /ask page, POST /api/agent (owner: hector)
 - [x] Investor check for founders (replaces Raise view): /investors page, /api/investor/* (owner: hector)

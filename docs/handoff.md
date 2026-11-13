@@ -2,6 +2,12 @@
 
 Add a new entry at the top each time.
 
+## 2026-11-14 - hector
+
+- Done: per-browser profiles (X-Profile header + pid cookie, CACHE_DIR/profiles), onboarding at / (raising / investing / demo), #/profile settings, founder home. /api/profile returns `context` used by /ask. All Ask entry points (header, Ctrl+K, "Ask about") go to /ask?q=. /investors removed.
+- State: live on VPS :8040; shared demo stays locked (DEMO_LOCK=1), own profiles editable; max 2 cold builds at once (BUILD_SLOTS).
+- Next: test a cold build end to end, profile cleanup, submission video.
+
 ## 2026-11-14 - hector (ask anything)
 
 - Done: chat-first page at `/ask` (`web/ask.html`) and `POST /api/agent` (`app/agent.py`, SSE: step / widget / done / error). Claude (`claude-opus-5-5`, low effort) calls Cala through tools (find, profile, deals, rivals, investor_overlap, research) and answers only with widgets: headline, stats, bars, timeline, list, table, path, followups.

@@ -150,13 +150,14 @@ async function boot() {
   app.innerHTML = `<main class="main"><div class="ph"><div class="sk" style="height:32px;width:240px"></div><div class="sk sk-line" style="width:380px;max-width:80vw;margin-top:8px"></div></div><div class="sk" style="height:140px;border-radius:14px"></div><div class="sk" style="height:140px;border-radius:14px"></div></main>`;
   await initApi();
   await loadMe();
-  installGlobal({ onAsk: q => openAsk(q) });
+  const goAsk = q => { location.href = '/ask' + (q ? '?q=' + encodeURIComponent(q) : ''); };
+  installGlobal({ onAsk: q => goAsk(q) });
   document.addEventListener('click', e => {
-    if (e.target.closest('[data-open-ask]')) { e.preventDefault(); openAsk(); }
+    if (e.target.closest('[data-open-ask]')) { e.preventDefault(); goAsk(); }
   });
   document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openAsk(); }
-    else if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName) && !document.querySelector('.scrim')) { e.preventDefault(); openAsk(); }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); goAsk(); }
+    else if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName) && !document.querySelector('.scrim')) { e.preventDefault(); goAsk(); }
   });
   addEventListener('hashchange', route);
   route();

@@ -137,7 +137,7 @@ const EXAMPLES = ['Does TCV back any rival of Qonto?', 'Who invested in Pennylan
 const history = [];   // {q, headline} of finished answers, sent as context for follow-ups
 let run = 0;          // bumps on every question so a superseded stream stops drawing
 let profile = null;   // who is asking (company, portfolio), when the app has a profile for this browser
-fetch('/api/profile').then(r => r.ok ? r.json() : null).then(p => { profile = p && (p.context || null); }).catch(() => {});
+const profileReady = fetch('/api/profile').then(r => r.ok ? r.json() : null).then(p => { profile = p && (p.context || null); }).catch(() => {});
 
 /* ---------- widgets ---------- */
 const sources = w => w.sources && w.sources.length ? `<div class="srcs">${w.sources.map(s => `<a class="src" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.name)}">${esc(s.name)} ↗</a>`).join('')}</div>` : '';
@@ -211,6 +211,8 @@ async function ask(q) {
   } catch (e) { fail(e.message || 'Something went wrong.'); }
 }
 
+const initialQ = new URLSearchParams(location.search).get('q');
+if (initialQ) profileReady.then(() => ask(initialQ));
 document.addEventListener('submit', e => { e.preventDefault(); const i = e.target.querySelector('input'); ask(i.value || (e.target.closest('.hero') ? i.placeholder : '')); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-ask]'); if (b) ask(b.dataset.ask); });
 newBtn.onclick = home;
