@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import random
 import json
 import os
 import time
@@ -40,7 +41,7 @@ class RateLimited(CalaError):
 
 
 class Cala:
-    def __init__(self, concurrency: int = 6):
+    def __init__(self, concurrency: int = int(os.environ.get("CALA_CONCURRENCY", "4"))):
         self.key = os.environ.get("CALA_API_KEY", "")
         self.sem = asyncio.Semaphore(concurrency)
         self.slow_sem = asyncio.Semaphore(int(os.environ.get("CALA_SLOW_CONCURRENCY", "2")))
@@ -118,7 +119,7 @@ class Cala:
         slow = tool.startswith("knowledge_")
         async with (self.slow_sem if slow else self.sem):
             self.stats["misses"] += 1
-            for attempt in range(7):
+            for attempt in range(9):
                 try:
                     r = await self._client().post(CALA_URL, json=body)
                     if r.status_code in (429, 502, 503, 504):
@@ -129,7 +130,7 @@ class Cala:
                     return self._parse(r.text)
                 except RateLimited as e:
                     last = e
-                    await asyncio.sleep(min(2 * 2 ** attempt, 25))
+                    await asyncio.sleep(min(2 * 2 ** attempt, 30) + random.random() * 2)
                 except (httpx.TimeoutException, httpx.TransportError) as e:
                     last = e
                     await asyncio.sleep(1.0 * (attempt + 1))

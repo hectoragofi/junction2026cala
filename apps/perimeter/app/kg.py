@@ -54,7 +54,7 @@ def merge_sources(*lists: list[dict], cap: int = 6) -> list[dict]:
 _LEGAL = {"llc", "lp", "llp", "ltd", "limited", "gmbh", "inc", "incorporated", "sa", "sas", "bv", "nv", "plc",
           "co", "kg", "ag", "ab", "oy", "as", "spa", "srl", "corp", "corporation", "company", "the", "and",
           "holdings", "holding", "group", "management", "affiliated", "investment", "investments", "funds", "fund",
-          "advisors", "advisers", "partnership", "lllp", "pte", "pty", "sarl", "se", "uk", "us", "geschlossene",
+          "advisors", "advisers", "partnership", "lllp", "pte", "pty", "sarl", "se", "geschlossene",
           "mbh", "ug", "collectively", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "l", "p"}
 _GENERIC = {"capital", "ventures", "venture", "partners", "vc"}
 
@@ -113,7 +113,7 @@ def clean_name(name: str) -> str:
 def short_company(name: str) -> str:
     """'Revolut Ltd' -> 'Revolut' for prose."""
     n = clean_name(name)
-    n2 = re.sub(r"[,\s]+(Ltd\.?|Limited|LLC|L\.?P\.?|LLP|GmbH|Inc\.?|S\.?A\.?S?\.?|B\.?V\.?|N\.?V\.?|PLC|AG|AB|SE)$",
+    n2 = re.sub(r"[,\s]+(Ltd\.?|Limited|LLC|L\.?P\.?|LLP|GmbH|Inc\.?|S\.?A\.?S?\.?|B\.?V\.?|N\.?V\.?|PLC\.?|AG|AB|SE)$",
                 "", n, flags=re.I)
     return n2.strip() or n
 
@@ -124,10 +124,7 @@ def similarity(a: str, b: str) -> float:
         return 0.0
     if ka == kb:
         return 1.0
-    r = difflib.SequenceMatcher(None, ka, kb).ratio()
-    if ka.split()[0] == kb.split()[0]:
-        r = max(r, 0.8)
-    return r
+    return difflib.SequenceMatcher(None, ka, kb).ratio()
 
 
 def fmt_amount(value: Any, units: str | None) -> str | None:
@@ -137,6 +134,16 @@ def fmt_amount(value: Any, units: str | None) -> str | None:
         return None
     if v <= 0:
         return None
+    u = (units or "").strip()
+    mult = 1.0
+    if re.search(r"bn|billion", u, re.I):
+        mult, u = 1e9, re.sub(r"\s*(bn|billion)\s*", " ", u, flags=re.I).strip()
+    elif re.search(r"m|mn|million", u, re.I):
+        mult, u = 1e6, re.sub(r"\s*(mn|m|million)\s*", " ", u, flags=re.I).strip()
+    elif v < 10000:
+        mult = 1e6  # Cala sometimes stores deal values in millions without saying so
+    v *= mult
+    units = u
     sym = {"EUR": "€", "USD": "$", "GBP": "£"}.get((units or "").upper(), "")
     suffix = "" if sym else f" {units}" if units else ""
     if v >= 1e9:
@@ -234,7 +241,8 @@ def company_basics(ent: dict) -> dict:
     hq = ", ".join(x for x in (city, country) if x) or None
     founded = pval(ent, "founding_date")
     inds = [title_industry(e["name"]) for e in out.get("OPERATES_IN_INDUSTRY", [])]
-    pref = [i for i in inds if i.lower() not in ("software and services",)] or inds
+    rank = ["fintech", "banking", "insurance", "healthcare", "biotechnology", "energy", "software and services"]
+    pref = sorted(inds, key=lambda i: rank.index(i.lower()) if i.lower() in rank else 50)
     website = pval(ent, "website")
     c = {"id": ent["id"], "name": short_company(ent["name"]), "description": ent.get("description") or "",
          "website": website, "hq": hq, "founded": str(founded)[:4] if founded else None,
@@ -269,21 +277,29 @@ async def search_companies(name: str) -> list[dict]:
     return out
 
 
-async def resolve_company(name: str, extra_ids: list[str] | None = None) -> tuple[dict | None, list[dict], float]:
-    """Return (best, candidates, confidence). Picks the richest of the closest name matches."""
+async def resolve_company(name: str, hint_ids: list[str] | None = None) -> tuple[dict | None, list[dict], float]:
+    """Return (best, candidates, confidence).
+
+    Cala's own entity link (hint_ids, from knowledge_query) wins. Otherwise exact normalised-name matches are
+    preferred, and among those the richest record (most properties/relationships) is chosen.
+    """
     cands = await search_companies(name)
     scored = sorted(((similarity(name, c.get("name", "")), c) for c in cands), key=lambda t: -t[0])
-    top = [c for s, c in scored if s >= 0.6][:3]
-    ids = {c["id"]: c for c in top}
-    for x in extra_ids or []:
-        ids.setdefault(x, {"id": x})
-    if not ids:
+    if hint_ids:
+        h = hint_ids[0]
+        best = next((c for _, c in scored if c["id"] == h), {"id": h, "name": name})
+        return best, [c for _, c in scored[:5]], 0.95
+    exact = [c for s, c in scored if s >= 0.999][:4]
+    top = exact or [c for s, c in scored if s >= 0.75][:2]
+    if not top:
         return None, [c for _, c in scored[:5]], 0.0
-    rich = await asyncio.gather(*[richness(i) for i in ids])
-    best_id = max(zip(ids, rich), key=lambda t: t[1])[0]
-    best = ids[best_id]
-    conf = max((s for s, c in scored if c["id"] == best_id), default=0.75)
-    return best, [c for _, c in scored[:5]], conf
+    if len(top) == 1:
+        best = top[0]
+    else:
+        rich = await asyncio.gather(*[richness(c["id"]) for c in top])
+        best = max(zip(top, rich), key=lambda t: t[1])[0]
+    conf = next(s for s, c in scored if c["id"] == best["id"])
+    return best, [c for _, c in scored[:5]], round(conf if exact else conf * 0.9, 2)
 
 
 # --------------------------------------------------------------------------- events
@@ -371,7 +387,7 @@ def people_of(ent: dict) -> list[dict]:
     by_id: dict[str, dict] = {}
     for rel, lst in ent.get("inc", {}).items():
         for e in lst:
-            if e["type"] != "Person":
+            if e["type"] != "Person" or rel == "INVESTED_IN":
                 continue
             p = by_id.setdefault(e["id"], {"id": e["id"], "name": e["name"], "roles": [], "rels": set(),
                                            "sources": []})
@@ -384,7 +400,7 @@ def people_of(ent: dict) -> list[dict]:
     # merge same-name duplicates
     merged: dict[str, dict] = {}
     for p in by_id.values():
-        k = " ".join(norm_tokens(p["name"]))
+        k = person_key(p["name"])
         if k in merged:
             m = merged[k]
             m["roles"] += [r for r in p["roles"] if r not in m["roles"]]
@@ -402,6 +418,11 @@ def people_of(ent: dict) -> list[dict]:
     rank = lambda p: (0 if "FOUNDED" in p["rels"] or "IS_CEO_OF" in p["rels"] else 1 if p["board"] else 2)
     out.sort(key=rank)
     return out
+
+
+def person_key(name: str) -> str:
+    t = re.sub(r"[^a-z ]+", " ", strip_accents(name or "").lower()).split()
+    return f"{t[0]} {t[-1]}" if len(t) >= 2 else " ".join(t)
 
 
 def _role_text(roles: list[str]) -> str:
@@ -476,12 +497,11 @@ async def find_rivals(c: dict, cap: int = 5) -> list[dict]:
         if same_org(n, c["name"]):
             return None
         hint_ids = [e["id"] for e in ents if e.get("entity_type") in COMPANY_TYPES and any(
-            similarity(n, m) >= 0.8 for m in (e.get("mentions") or []) + [e.get("name", "")])]
+            similarity(n, m) >= 0.85 for m in (e.get("mentions") or []) + [e.get("name", "")])]
         best, _, conf = await resolve_company(n, hint_ids[:1])
         if not best:
             return None
-        return {"id": best["id"], "name": n, "sub": (sub or "")[:120] or None,
-                "confidence": round(conf if not hint_ids else max(conf, 0.9), 2)}
+        return {"id": best["id"], "name": n, "sub": (sub or "")[:120] or None, "confidence": conf}
 
     picked = await asyncio.gather(*[one(n, s) for n, s in names[: cap + 3]])
     out, seen = [], {c["id"]}

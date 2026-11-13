@@ -32,6 +32,7 @@ async def build_company(eid: str, rival: bool = False) -> dict | None:
     if not ent:
         return None
     c = company_basics(ent)
+    c["screen_name"] = c["name"]
     events = await company_events(ent, cap=6 if rival else 10)
     c["events"] = events
     c["investors"] = investors_of(ent, events)
@@ -66,16 +67,16 @@ async def build(portfolio_ids: list[str], progress=None) -> dict:
     rivals = {c["id"]: c for c in await asyncio.gather(*[build_company(i, rival=True) for i in rival_ids]) if c}
     for c in port:
         for r in c["rivals"]:
-            if r["id"] in rivals:
-                r["display"] = rivals[r["id"]]["name"]
+            if r["id"] in rivals and kg.similarity(r["name"], rivals[r["id"]]["name"]) >= 0.6:
+                rivals[r["id"]]["name"] = r["name"]  # the name Cala's answer used, e.g. "Checkout.com"
 
     # people of portfolio companies: fetch their other affiliations
     say("people")
     people_ids = list(dict.fromkeys(p["id"] for c in port for p in c["people"][:PEOPLE_FETCH_CAP]))
     inv_ids = list(dict.fromkeys(i["id"] for c in port for i in c["investors"][:INVESTOR_FETCH_CAP]
                                  if i["type"] != "Person"))
-    screen_tasks = [kg.screen(c["name"], screen_hint(c)) for c in port]
-    rival_screen_tasks = [kg.screen(r["name"], screen_hint(r), only_cached=True) for r in rivals.values()]
+    screen_tasks = [kg.screen(c["screen_name"], screen_hint(c)) for c in port]
+    rival_screen_tasks = [kg.screen(r["screen_name"], screen_hint(r), only_cached=True) for r in rivals.values()]
     persons, investors_ents, screens, rival_screens = await asyncio.gather(
         asyncio.gather(*[safe_entity(i, 40) for i in people_ids]),
         asyncio.gather(*[safe_entity(i, 80) for i in inv_ids]),
@@ -142,7 +143,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
     per_touch: dict[str, dict] = {}
 
     def touch_person(p: dict, cid: str, role: str, sources: list[dict], board: bool):
-        k = " ".join(kg.norm_tokens(p["name"]))
+        k = kg.person_key(p["name"])
         t = per_touch.setdefault(k, {"person": p, "companies": {}})
         t["companies"].setdefault(cid, {"role": role, "sources": sources[:3], "board": board})
 
@@ -180,7 +181,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
             if t and len(t["companies"]) > 1:
                 inv["shared_with"] = names(t["companies"], c["id"])
         for p in c["people"]:
-            t = per_touch.get(" ".join(kg.norm_tokens(p["name"])))
+            t = per_touch.get(kg.person_key(p["name"]))
             if t and len(t["companies"]) > 1:
                 p["shared_with"] = names(t["companies"], c["id"])
 
@@ -253,8 +254,8 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
             prole = t["companies"][pc]["role"]
             kind = "overlap_board" if board else "hiring"
             sev = "high" if (board and direct) else "medium"
-            title = (f"{p['name']} ({prole} at {universe[pc]['name']}) is also {_article(rrole)} at "
-                     f"{universe[r]['name']}")
+            title = (f"{p['name']} ({prole}, {universe[pc]['name']}) also "
+                     f"{_verb(rrole, t['companies'][r]['board'])} {universe[r]['name']}")
             srcs = merge_sources(t["companies"][pc]["sources"], t["companies"][r]["sources"])
             items.append({
                 "id": _id("per", k, r), "kind": kind, "category": "Overlaps", "severity": sev,
@@ -393,7 +394,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
         return {
             "id": c["id"], "name": c["name"], "description": c["description"], "website": c.get("website"),
             "hq": c.get("hq"), "founded": c.get("founded"), "industry": c.get("industry"),
-            "rivals": [{"id": r["id"], "name": r.get("display") or r["name"], "type": "Company",
+            "rivals": [{"id": r["id"], "name": rivals[r["id"]]["name"], "type": "Company",
                         "sub": r.get("sub"), "confidence": r.get("confidence")}
                        for r in c["rivals"] if r["id"] in rivals],
             "investors": [{k: v for k, v in {"id": i["id"], "name": i["name"], "type": i["type"], "sub": i["sub"],
@@ -453,14 +454,17 @@ def _join(xs: list[str]) -> str:
     return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
 
 
-def _article(role: str) -> str:
-    r = (role or "linked").strip()
-    low = r.lower()
-    if low in ("founder", "works at", "member"):
-        return {"founder": "a founder", "works at": "linked", "member": "a member"}[low]
-    if r[:1].isupper() and r.split()[0].isupper():  # CEO, CTO
-        return r
-    return ("an " if low[:1] in "aeiou" else "a ") + low
+def _verb(role: str, board: bool) -> str:
+    low = (role or "").lower()
+    if board or "board" in low or "director" in low:
+        return "sits on the board of"
+    if "found" in low:
+        return "co-founded"
+    if low in ("ceo", "cto", "coo", "cfo", "cco", "president", "chair") or low.startswith("chief"):
+        return f"is {role} of"
+    if "invest" in low:
+        return "invested in"
+    return "works at"
 
 
 def _dedupe_signals(signals: list[dict]) -> list[dict]:
