@@ -282,7 +282,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                 path = [node(cref(p), "portfolio", inv_edge(t, p, "backed by")),
                         node(iref, "shared", inv_edge(t, r, "also backs")),
                         node(cref(r), "rival", rival_edge(r, rp)), node(cref(rp), "portfolio")]
-                body = (f"Cala lists {inv['name']} as an investor in both {universe[p]['name']} and "
+                body = (f"Cala lists {iname} as an investor in both {universe[p]['name']} and "
                         f"{universe[r]['name']}"
                         + (f", one of {universe[p]['name']}'s closest competitors. " if direct else
                            f", which competes with {universe[rp]['name']} (also in your portfolio). ")

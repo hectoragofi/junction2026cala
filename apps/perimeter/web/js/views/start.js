@@ -18,7 +18,7 @@ export function render(ctx) {
   let rows = []; // {query, best, candidates, pick (index or -1)}
   app.innerHTML = `<main class="main start">
     <section class="hero in">
-      <h1>Know first when something<br>changes around your bets.</h1>
+      <h1>Know first when something <br>changes around your bets.</h1>
       <p>Sourced risk checks and a quiet feed for your portfolio, built on Cala’s knowledge graph.</p>
     </section>
     <div class="sec in" style="gap:12px;animation-delay:.05s">
@@ -69,7 +69,8 @@ export function render(ctx) {
     $('#startGo').disabled = true;
     try {
       const r = await api.resolve(v);
-      rows = (r.matches || []).map(m => ({ ...m, pick: m.best ? Math.max(0, (m.candidates || []).findIndex(c => c.id === m.best.id)) : -1, candidates: m.candidates?.length ? m.candidates : (m.best ? [m.best] : []) }));
+      // the API returns best separately from the other candidates: best is always option 1
+      rows = (r.matches || []).map(m => ({ ...m, pick: m.best ? 0 : -1, candidates: m.best ? [m.best, ...(m.candidates || []).filter(c => c.id !== m.best.id)] : (m.candidates || []) }));
       drawConfirm();
     } catch (err) {
       box.innerHTML = `<div class="card scard"><span class="cap">Source error</span><span>Couldn’t reach Cala to match those names. ${esc(err.message)}</span><button type="button" class="btn" style="align-self:flex-start" id="retryRes">Retry</button></div>`;
@@ -83,7 +84,7 @@ export function render(ctx) {
     if (!rows.length) { box.innerHTML = ''; return; }
     const found = rows.filter(chosen);
     box.innerHTML = `<section class="sec in" aria-label="Confirm companies">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap">
         <h2 style="font-size:15px;font-weight:600">We found ${plural(found.length, 'company', 'companies')}</h2>
         <span class="meta">Remove any that are wrong</span>
       </div>
@@ -94,7 +95,7 @@ export function render(ctx) {
         return `<div class="row"><span class="grow" style="min-width:0;display:flex;flex-direction:column">
             <span style="font-weight:500">${esc(c.name)}</span>
             <span class="meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc([c.description, c.hq, c.founded && 'founded ' + c.founded].filter(Boolean).join(' · '))}</span></span>
-          ${c.website ? `<span class="meta" style="white-space:nowrap">${esc(c.website.replace(/^https?:\/\//, ''))}</span>` : ''}
+          ${c.website ? `<span class="meta mhide" style="white-space:nowrap">${esc(c.website.replace(/^https?:\/\//, ''))}</span>` : ''}
           ${multi ? `<button type="button" class="cand" data-cand="${i}" aria-haspopup="menu">${r.pick + 1} of ${r.candidates.length} ▾</button>` : ''}
           <button type="button" class="x" data-rm="${i}" aria-label="Remove ${esc(c.name)}">×</button></div>`;
       }).join('')}</div>

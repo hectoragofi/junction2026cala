@@ -182,7 +182,7 @@ function countsHTML(r) {
 function headHTML(r, q, live) {
   const c = r.company || {};
   const checked = r.checked_at ? fmtDate(r.checked_at.slice(0, 10), { year: true }) : 'now';
-  return `<span class="meta" id="ckMeta">${live ? `Checking in Cala · <span id="ckT">…</span>` : `Checked ${esc(checked)} · last 12 months · ${Math.round(r.seconds || 0)} s`}</span>
+  return `<span class="meta" id="ckMeta">${live ? `Checking in Cala · <span id="ckT">…</span>` : `Checked ${esc(checked)} · last 12 months · ${r.seconds >= 1 ? Math.round(r.seconds) + ' s' : 'under 1 s'}`}</span>
       <h1>${esc(nm(c.name || q))}</h1>
       <div class="chips" style="align-items:center">${(c.tags || []).filter(Boolean).map(t => `<span class="pill rep">${esc(t)}</span>`).join('')}
         ${c.lei ? `<span class="note" style="margin-left:4px">Matched in Cala by LEI</span>` : c.website ? `<span class="note" style="margin-left:4px">${esc(c.website)}</span>` : ''}</div>

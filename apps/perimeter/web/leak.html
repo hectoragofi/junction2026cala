@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perimeter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAFA;--card:#fff;--ink:#0A0A0A;--muted:#5C5C66;--faint:#8A8A93;--line:#EDEDEF;--red:#C62828;--red-soft:#FDF1F0;--amber:#9A6700}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+main{max-width:640px;margin:0 auto;padding:20px 16px 80px}
+a{color:inherit}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.logo{font-weight:600;text-decoration:none;white-space:nowrap}
+.search{flex:1;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 14px;font:inherit;outline:none}
+.search:focus{border-color:var(--ink)}
+h1{font-size:26px;line-height:1.2;margin:0;font-weight:600;letter-spacing:-.01em}
+.meta{color:var(--muted);margin-top:4px}
+.verdict{margin:24px 0 8px;padding:16px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:17px;line-height:1.4;font-weight:500}
+.verdict.bad{background:var(--red-soft);border-color:#F6D5D2}
+.verdict b{font-weight:600}
+h2{font-size:12px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin:28px 0 6px;display:flex;justify-content:space-between}
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:baseline;gap:12px;padding:11px 14px;border-top:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;font:inherit;text-align:left;color:inherit}
+.row:first-child{border-top:0}
+button.row{cursor:pointer}button.row:hover{background:#FAFAFA}
+.name{font-weight:500;flex:1;min-width:0}
+.sub{color:var(--faint);font-weight:400;font-size:13px}
+.tag{font-size:13px;white-space:nowrap;color:var(--faint)}
+.tag.bad{color:var(--red);font-weight:500}
+.tag.near{color:var(--amber)}
+.src{padding:0 14px 12px;font-size:13px;color:var(--muted)}
+.src a{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.more{display:block;width:100%;padding:10px;border:0;border-top:1px solid var(--line);background:none;font:inherit;color:var(--muted);cursor:pointer}
+.home{padding-top:18vh;text-align:center}
+.home h1{font-size:34px}
+.home p{color:var(--muted);margin:10px 0 24px;font-size:16px}
+.home .search{width:100%;height:52px;font-size:16px;border-radius:14px;flex:none}
+.picks{margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.picks a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);text-decoration:none;font-size:13px}
+.foot{margin-top:28px;color:var(--faint);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const $ = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let data;
+
+const go = name => { location.hash = name ? '#' + encodeURIComponent(name) : ''; };
+const searchBox = v => `<input class="search" placeholder="Search a company" value="${esc(v || '')}" list="cos" autocomplete="off">
+  <datalist id="cos">${data.companies.map(c => `<option value="${esc(c.name)}">`).join('')}</datalist>`;
+
+function home() {
+  $.innerHTML = `<div class="home">
+    <h1>Who else do your investors back?</h1>
+    <p>See which investors also fund your rivals, before you send them your deck.</p>
+    ${searchBox()}
+    <div class="picks">${data.companies.map(c => `<a href="#${encodeURIComponent(c.name)}">${esc(c.name)}</a>`).join('')}</div>
+  </div><div class="foot">Every fact is sourced from Cala's knowledge graph.</div>`;
+  wire();
+}
+
+function company(c) {
+  const rivals = new Set(c.rivals.map(r => r.name));
+  const sig = inv => data.signals.find(s => s.kind === 'Shared investor' && s.entities.some(e => e.id === inv.id));
+  const invs = c.investors.map(i => {
+    const shared = i.shared_with || [];
+    const direct = shared.filter(n => rivals.has(n));
+    const near = shared.filter(n => !rivals.has(n) && n !== c.name);
+    return {...i, direct, near, rank: direct.length ? 0 : near.length ? 1 : 2, sources: (sig(i) || {}).sources || []};
+  }).sort((a, b) => a.rank - b.rank);
+  const bad = invs.filter(i => i.rank === 0);
+  const news = data.signals.filter(s => s.kind !== 'Shared investor' && s.entities.some(e => e.id === c.id || rivals.has(e.name))).slice(0, 4);
+
+  const verdict = bad.length
+    ? `<div class="verdict bad"><b>${bad.length} of ${invs.length}</b> investors in ${esc(c.name)} also ${bad.length > 1 ? 'back' : 'backs'} a direct rival: ${bad.map(i => `<b>${esc(i.name)}</b> → ${esc(i.direct.join(', '))}`).join('; ')}.</div>`
+    : `<div class="verdict">None of ${esc(c.name)}'s ${invs.length} known investors back a direct rival.</div>`;
+
+  const invRow = (i, n) => `<button class="row" data-i="${n}" ${n >= 5 ? 'hidden' : ''}>
+      <span class="name">${esc(i.name)} <span class="sub">${esc(i.sub === i.type ? '' : (i.sub || '').replace('Investor since', 'since'))}</span></span>
+      <span class="tag ${i.rank === 0 ? 'bad' : i.rank === 1 ? 'near' : ''}">${i.rank === 0 ? 'Also backs ' + esc(i.direct.join(', ')) : i.rank === 1 ? 'Also backs ' + esc(i.near.join(', ')) : 'No rival found'}</span>
+    </button><div class="src" data-s="${n}" hidden>${i.sources.length ? i.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)} · ${esc(s.date || '')}</a>`).join('') : 'From Cala\'s investor records for ' + esc(c.name) + '.'}</div>`;
+
+  $.innerHTML = `<div class="top"><a class="logo" href="#">Perimeter</a>${searchBox()}</div>
+    <h1>${esc(c.name)}</h1>
+    <div class="meta">${[c.industry, c.hq, c.founded && 'Founded ' + c.founded].filter(Boolean).map(esc).join(' · ')}</div>
+    ${verdict}
+    <h2><span>Investors</span><span>${invs.length}</span></h2>
+    <div class="list">${invs.map(invRow).join('')}${invs.length > 5 ? `<button class="more">Show all ${invs.length}</button>` : ''}</div>
+    <h2><span>Direct rivals</span><span>${c.rivals.length}</span></h2>
+    <div class="list">${c.rivals.map(r => `<div class="row"><span class="name">${esc(r.name)}</span><span class="tag">${esc(r.sub || '')}</span></div>`).join('')}</div>
+    ${news.length ? `<h2><span>Latest around ${esc(c.name)}</span></h2>
+    <div class="list">${news.map(s => `<div class="row"><span class="name">${esc(s.text)}</span><span class="tag">${esc(s.kind)}</span></div>`).join('')}</div>` : ''}
+    <div class="foot">Every fact is sourced from Cala's knowledge graph. Click an investor for sources.</div>`;
+  wire();
+  $.querySelectorAll('button.row').forEach(b => b.onclick = () => { const s = $.querySelector(`[data-s="${b.dataset.i}"]`); s.hidden = !s.hidden; });
+  const more = $.querySelector('.more');
+  if (more) more.onclick = () => { $.querySelectorAll('button.row[hidden]').forEach(r => r.hidden = false); more.remove(); };
+}
+
+function wire() {
+  const s = $.querySelector('.search');
+  const pick = () => { const c = data.companies.find(c => c.name.toLowerCase() === s.value.trim().toLowerCase()); if (c) go(c.name); };
+  s.addEventListener('change', pick);
+  s.addEventListener('keydown', e => e.key === 'Enter' && pick());
+}
+
+function render() {
+  const name = decodeURIComponent(location.hash.slice(1));
+  const c = data.companies.find(c => c.name === name);
+  c ? company(c) : home();
+  scrollTo(0, 0);
+}
+
+fetch('/api/perimeter').then(r => r.json()).then(d => { data = d; render(); addEventListener('hashchange', render); })
+  .catch(() => { $.innerHTML = '<div class="home"><p>Could not load data. Reload to try again.</p></div>'; });
+</script>
+</body>
+</html>

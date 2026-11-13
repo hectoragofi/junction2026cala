@@ -161,6 +161,19 @@ def fmt_amount(value: Any, units: str | None) -> str | None:
     return f"{sym}{s}{suffix}"
 
 
+def trim_text(s: str | None, n: int) -> str | None:
+    """Shorten to n chars at a sentence or word boundary, never mid-word."""
+    s = (s or "").strip()
+    if len(s) <= n:
+        return s or None
+    cut = s[:n]
+    m = re.search(r"^(.{40,})[.;!?](?:\s|$)", cut)
+    if m:
+        return m.group(1) + "."
+    cut = re.sub(r"(?:[\s,;:—–-]+(?:and|or|with|the|a|an|of|to|for|in))+$", "", cut.rsplit(" ", 1)[0])
+    return cut.rstrip(",;:—–- ") + "…"
+
+
 def months_ago(d: str | None) -> float | None:
     if not d:
         return None
@@ -524,7 +537,7 @@ async def find_rivals(c: dict, cap: int = 5) -> list[dict]:
         best, _, conf = await resolve_company(n, hint_ids[:1])
         if not best:
             return None
-        return {"id": best["id"], "name": n, "sub": (sub or "")[:120] or None, "confidence": conf}
+        return {"id": best["id"], "name": n, "sub": trim_text(sub, 120), "confidence": conf}
 
     picked = await asyncio.gather(*[one(n, s) for n, s in names[: cap + 3]])
     out, seen = [], {c["id"]}
@@ -868,7 +881,9 @@ def parse_screen(res: dict, name: str) -> dict:
         findings.append({"severity": sev, "status": "reported", "category": cat, "title": title,
                          "body": clean_body[:600], "date": when, "sources": sources})
     sanc = [f for f in findings if f["category"] == "sanctions"]
-    all_src = _ks_sources(all_ctx[:8])
+    # "screened" sources shown on a clear result must at least be about the company
+    about = [k for k in all_ctx if first and first in strip_accents((k.get("content") or "").lower())]
+    all_src = _ks_sources(about[:8])
     return {"findings": findings, "screened": len(ctx),
             "sanctions": {"clear": not sanc, "screened": len(ctx),
                           "text": (f"Possible sanctions exposure reported across {len(ctx)} sources" if sanc else

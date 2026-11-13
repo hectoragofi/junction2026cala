@@ -259,6 +259,7 @@ button.pill.hot:hover{background:#E2E7FF}
 .step.error .ic{border-color:var(--accent);color:var(--accent);font-weight:700}
 .step .d{font-weight:400;color:var(--faint);margin-left:6px}
 .counts{padding:22px;display:flex;align-items:stretch}
+.rsub{order:3;flex-basis:100%;font-size:13px}
 .livebar{padding:14px 20px;position:sticky;top:72px;z-index:5;background:rgba(255,255,255,.96)}
 .buildbar{display:flex;align-items:center;gap:10px;padding:12px 18px;font-size:13px;font-weight:500}
 .buildbar .meta{font-size:12px;white-space:nowrap}
@@ -422,6 +423,7 @@ button.fact:hover{background:var(--bg)}
   .stat:nth-last-child(-n+2){border-bottom:0}
   .sig{flex-direction:column;gap:8px;padding:14px 18px}
   .sig>.pill{width:auto}
+  .sig .b{align-self:stretch;width:100%}
   .graph-wrap{height:600px}
   .legend{right:16px;border-radius:12px;gap:4px 10px;font-size:11px;left:10px;right:10px;bottom:10px}
   .graph-wrap svg{touch-action:pan-y}

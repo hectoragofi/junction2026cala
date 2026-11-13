@@ -81,7 +81,7 @@ function mountAsk(root, { compact }) {
       const r = await api.ask(q);
       if (my !== seq) return; clear();
       body.innerHTML = `<div class="sec in" style="gap:14px">
-        <div class="answer-meta"><span class="cap">Answer from Cala</span><span class="meta">· ${Math.max(r.seconds || 0, (Date.now() - t0) / 1000).toFixed(0)} s</span></div>
+        <div class="answer-meta"><span class="cap">Answer from Cala</span><span class="meta">· ${(() => { const t = Math.max(r.seconds || 0, (Date.now() - t0) / 1000); return t < 1 ? 'from your perimeter' : Math.round(t) + ' s'; })()}</span></div>
         <div class="md">${md(r.answer_md)}</div>
         ${(r.entities || []).length ? `<div class="sec" style="gap:8px"><span class="cap">Mentioned</span><div class="chips">${r.entities.map(entChip).join('')}</div></div>` : ''}
         ${(r.sources || []).length ? `<div class="sec" style="gap:8px"><span class="cap">Sources</span><div class="chips">${srcChips(r.sources, 8)}</div></div>` : ''}

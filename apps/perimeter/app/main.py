@@ -279,11 +279,95 @@ async def ask(body: AskIn):
     if not q:
         raise HTTPException(400, "q required")
     t0 = time.monotonic()
+    local = _local_answer(q)
+    if local:
+        return {**local, "seconds": round(time.monotonic() - t0, 1)}
     try:
-        res = await cala.ksearch(q)
+        res = await cala.ksearch(_with_portfolio(q))
     except Exception as e:
         raise HTTPException(502, f"Cala: {e}")
     return {**ask_payload(res), "seconds": round(time.monotonic() - t0, 1)}
+
+
+_MY = re.compile(r"\b(my|our) (portfolio( companies)?|companies|bets|investments)\b", re.I)
+
+
+def _with_portfolio(q: str) -> str:
+    """Cala doesn't know the user's portfolio: name it when the question refers to it."""
+    names = [c["name"] for c in STATE.get("portfolio") or []]
+    if not names or not (_MY.search(q) or re.search(r"\b(rivals?|competitors?)\b", q, re.I)):
+        return q
+    q2 = _MY.sub(", ".join(names), q)
+    rivals = (STATE.get("built") or {}).get("rivals_index") or {}
+    ctx = f" (Portfolio companies: {', '.join(names)}"
+    if rivals:
+        ctx += "; their closest rivals: " + ", ".join(v["name"] for v in list(rivals.values())[:16])
+    return q2 + ctx + ")"
+
+
+def _local_answer(q: str) -> dict | None:
+    """Overlap questions are answered from the built perimeter (Cala facts, already sourced), instantly."""
+    b = STATE.get("built")
+    if not b:
+        return None
+    ql = q.lower()
+    items = (b.get("feed") or {}).get("items") or []
+    if re.search(r"\binvest|back", ql) and re.search(r"\brival|competitor", ql):
+        rows = [i for i in items if i["kind"] == "overlap_investor"]
+        head = "| Investor | Backs (yours) | Also backs | Rival of |\n|---|---|---|---|\n"
+        body = "".join(f"| {i['investor']['name']} | {i['company']['name']} | {i['subject']['name']} | "
+                       f"{i['subject']['relation'].replace('rival of ', '')} |\n" for i in rows)
+        intro = (f"{len(rows)} investor overlap{'s' if len(rows) != 1 else ''} across your portfolio, from Cala's "
+                 f"investment records:\n\n" if rows else "No investor in your portfolio also backs one of the "
+                                                         "closest rivals Cala lists.")
+        ents = [i["investor"] for i in rows] + [i["subject"] for i in rows]
+    elif re.search(r"\bboard|more than one|sits on|people", ql) and re.search(r"\bboard|compan|perimeter", ql):
+        sigs = [s for s in (b.get("perimeter") or {}).get("signals", []) if s["kind"] in ("Board seat", "Talent")]
+        rows = sigs
+        head = "| Person | Link |\n|---|---|\n"
+        body = "".join(f"| {s['entities'][0]['name']} | {s['text']} |\n" for s in sigs)
+        intro = (f"{len(sigs)} people link more than one company around your portfolio:\n\n" if sigs else
+                 "Cala lists nobody who sits on more than one board around your companies. Founders, executives "
+                 "and board members were checked for each portfolio company.")
+        ents = [s["entities"][0] for s in sigs]
+    elif re.search(r"\brivals?\b|competitors?", ql) and re.search(r"rais|fund|round", ql):
+        rows = [i for i in items if i["kind"] == "funding" and i.get("subject")]
+        recent = [i for i in rows if (kg.months_ago(i.get("date")) or 99) <= 12]
+        lead = ""
+        if re.search(r"this year|last (12 months|year)|recent", ql):
+            if recent:
+                rows = recent
+            elif rows:
+                lead = "None in the last 12 months. The most recent ones in Cala:\n\n"
+        head = "| Rival | Round | Date | Rival of |\n|---|---|---|---|\n"
+
+        def when(d):
+            try:
+                x = datetime.strptime(d[:10], "%Y-%m-%d")
+                return f"{x.day} {x:%b %Y}"
+            except (TypeError, ValueError):
+                return d or "—"
+        body = "".join(f"| {i['subject']['name']} | {i['title'].split(' raised ', 1)[-1]} | {when(i.get('date'))} "
+                       f"| {i['company']['name']} |\n" for i in rows)
+        intro = lead or (f"{len(rows)} funding round{'s' if len(rows) != 1 else ''} by your companies' closest "
+                         f"rivals in Cala:\n\n" if rows else
+                         "Cala has no recent funding rounds for your companies' closest rivals.")
+        ents = [i["subject"] for i in rows]
+        bodies = [i.get("body") or "" for i in rows if "Investors:" in (i.get("body") or "")]
+        if bodies:
+            body += "\nInvestors named in Cala:\n\n" + "\n".join(
+                f"- **{i['subject']['name']}** ({i['title'].split(' raised ', 1)[-1]}): "
+                f"{i['body'].split('Investors:', 1)[1].strip()}"
+                for i in rows if "Investors:" in (i.get("body") or ""))
+    else:
+        return None
+    srcs = kg.merge_sources(*[r.get("sources") or [] for r in rows], cap=12)
+    seen, refs = set(), []
+    for e in ents:
+        if e.get("id") and e["id"] not in seen:
+            seen.add(e["id"])
+            refs.append({"id": e["id"], "name": e["name"], "type": e.get("type") or "Company"})
+    return {"answer_md": intro + (head + body if rows else ""), "sources": srcs, "entities": refs[:20]}
 
 
 class DraftIn(BaseModel):
