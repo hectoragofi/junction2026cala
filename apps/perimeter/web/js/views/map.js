@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { $, $$, esc, srcChips, entPill, entLink, fmtNum, plural, nm } from '../ui.js';
 import { mountGraph } from './graph.js';
+import { seat, myCompany } from '../app.js';
 import { pathHTML, openOverlap, installPathHandlers } from '../overlap.js';
 
 const VIEW_KEY = 'perimeter-map-view';
@@ -13,8 +14,10 @@ export async function render(ctx) {
   const focus = ctx.qs?.get('focus') || null;
   const focusWith = (ctx.qs?.get('with') || '').split(',').filter(Boolean);
   if (focus) view = 'graph';
+  const founder = seat() === 'founder';
+  const co = founder ? (myCompany()?.name || 'your company') : null;
   app.innerHTML = `<main class="main wide">
-    <div class="maphead in"><div class="ph"><h1>Your perimeter</h1><p id="mapSub"><span class="sk sk-line" style="display:inline-block;width:420px;max-width:80vw"></span></p></div>
+    <div class="maphead in"><div class="ph"><h1>${founder ? `Around ${esc(co)}` : 'Your perimeter'}</h1><p id="mapSub"><span class="sk sk-line" style="display:inline-block;width:420px;max-width:80vw"></span></p></div>
       <div class="seg" role="tablist" aria-label="Map view"><button type="button" role="tab" data-v="graph">Graph</button><button type="button" role="tab" data-v="lanes">Lanes</button></div></div>
     <div class="card stats" id="stats">${Array.from({ length: 6 }, () => `<div class="stat"><div class="sk" style="height:28px;width:56px"></div><div class="sk sk-line" style="width:80px;margin-top:6px"></div></div>`).join('')}</div>
     <section class="sec" id="viewBox"><div class="card sk" style="height:560px"></div></section>
@@ -51,7 +54,9 @@ export async function render(ctx) {
     }, 4000);
     ctx._pollStop = () => clearInterval(pt);
   }
-  $('#mapSub').textContent = `Everything around your ${plural(cos.length, 'company', 'companies')}, mapped from Cala. Blue means it touches more than one of them.`;
+  $('#mapSub').textContent = founder
+    ? `Your rivals and the investors around you, mapped from Cala. Blue means it touches ${co} and a rival.`
+    : `Everything around your ${plural(cos.length, 'company', 'companies')}, mapped from Cala. Blue means it touches more than one of them.`;
   const statList = [[st.rivals, 'Rivals'], [st.investors, 'Investors'], [st.people, 'Founders, execs, board'], [st.countries, 'Countries'], [st.entities, 'Entities screened'], [st.facts, 'Cala facts, each sourced']];
   $('#stats').innerHTML = statList.map(([n, l]) => `<div class="stat"><b data-count="${n ?? 0}">0</b><span>${l}</span></div>`).join('');
   countUp($$('[data-count]'));

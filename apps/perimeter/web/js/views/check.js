@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { nm, $, $$, esc, srcChips, srcChip, entLink, sevPill, statusPill, fmtDate, fmtMonth, toast, plural, lookup, openPopover } from '../ui.js';
-import { refreshPortfolio } from '../app.js';
+import { refreshPortfolio, seat, viewingDemo } from '../app.js';
 
 const STEPS = [
   ['match', 'Matching the company'], ['profile', 'Reading Cala profile'], ['people', 'Mapping people and owners'],
@@ -222,7 +222,9 @@ function renderReport(ctx, q, r, { live = false, pend = {}, animate = true } = {
     ${countsHTML(r)}
     ${ORDER.map(n => { const s = SECTION[n](r, pend); return `<section class="sec${s.sk ? ' sk-sec' : ''}" id="s-${n}">${sectionInner(n, r, pend)}</section>`; }).join('')}
     <div style="display:flex;gap:8px;flex-wrap:wrap" id="ckActs">
-      <button type="button" class="btn ${inPf ? '' : 'dark'} lg" id="watch" ${inPf || !c.id ? 'disabled' : ''}>${inPf ? 'In your portfolio ✓' : 'Watch this company'}</button>
+      ${seat() === 'founder' ? (inPf ? '<button type="button" class="btn lg" disabled>Your company ✓</button>' : '')
+        : viewingDemo() ? (inPf ? '<button type="button" class="btn lg" disabled>In the demo portfolio ✓</button>' : '')
+        : `<button type="button" class="btn ${inPf ? '' : 'dark'} lg" id="watch" ${inPf || !c.id ? 'disabled' : ''}>${inPf ? 'In your portfolio ✓' : 'Watch this company'}</button>`}
       ${live ? '' : `<button type="button" class="btn lg" id="rerun">Re-run</button>`}
       <button type="button" class="btn lg" id="share">Copy link</button>
       <button type="button" class="btn lg" data-ask="${esc(`What are the biggest risks for ${c.name || q} right now?`)}">Ask about ${esc(nm(c.name || q))}</button>
@@ -235,7 +237,7 @@ function renderReport(ctx, q, r, { live = false, pend = {}, animate = true } = {
     const url = location.href.split('#')[0] + '#/check/' + encodeURIComponent(c.id || q);
     try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { toast(url); }
   };
-  $('#watch').onclick = async () => {
+  if ($('#watch')) $('#watch').onclick = async () => {
     const b = $('#watch'); b.disabled = true; b.textContent = 'Adding…';
     try {
       const ids = [...new Set([...(ctx.store.portfolio?.companies || []).map(x => x.id), c.id])].filter(Boolean);

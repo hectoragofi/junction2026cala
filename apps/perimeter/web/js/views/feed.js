@@ -1,7 +1,7 @@
 import { api } from '../api.js';
-import { refreshPortfolio } from '../app.js';
+import { refreshPortfolio, seat, myCompany, viewingDemo, hasProfile, switchView } from '../app.js';
 import { pathHTML, openOverlap, installPathHandlers } from '../overlap.js';
-import { $, $$, esc, srcChips, entLink, sevPill, statusPill, openMenu, openModal, toast, parseDate, fmtDate, trapFocus, plural } from '../ui.js';
+import { $, $$, esc, srcChips, entLink, entPill, sevPill, statusPill, openMenu, openModal, toast, parseDate, fmtDate, trapFocus, plural } from '../ui.js';
 
 const KIND_LABEL = { overlap_investor: 'Investor overlap', overlap_board: 'Board overlap', funding: 'Funding', mna: 'M&A', regulatory: 'Regulatory', legal: 'Legal', hiring: 'Hiring', news: 'News' };
 const CATS = ['All', 'Risk', 'Funding', 'Overlaps'];
@@ -32,14 +32,14 @@ function metaLine(it) {
   return `<span class="meta">${bits.join(' · ')}</span>`;
 }
 
-function cardHTML(it) {
+function cardHTML(it, founder = false) {
   const possible = it.status === 'possible';
   const overlap = it.kind?.startsWith('overlap');
   const labels = possible
     ? `${statusPill('possible', it.confidence)}<span class="pill rep">Reported</span>`
     : overlap ? `<span class="pill soft">${KIND_LABEL[it.kind]}</span>${it.severity === 'high' ? sevPill('high', 'High risk') : ''}`
     : `${it.severity === 'high' ? sevPill('high', 'High risk') : `<span class="pill med">${esc(KIND_LABEL[it.kind] || it.category)}</span>`}${statusPill(it.status)}`;
-  const draft = (it.actions || []).includes('draft_note');
+  const draft = !founder && (it.actions || []).includes('draft_note');
   const actions = possible
     ? `<div class="acts yn"><button type="button" class="btn" data-yes="${esc(it.id)}">Yes, it’s them</button><button type="button" class="btn" data-no="${esc(it.id)}">Not this company</button><span class="grow"></span>${srcChips(it.sources)}</div>`
     : `<div class="acts">${srcChips(it.sources, overlap && it.path?.length ? 1 : 2)}<span class="grow"></span>
@@ -64,6 +64,10 @@ function rowHTML(it) {
 export async function render(ctx) {
   const { app, store } = ctx;
   const companies = store.portfolio?.companies || [];
+  const founder = seat() === 'founder';
+  const co = founder ? (myCompany()?.name || companies[0]?.name || 'your company') : null;
+  // the backend phrases from an investor's seat; a founder is a portfolio of one
+  const phrase = t => !founder || !t ? t : t.replace(/ across your 1 compan(y|ies)\./, ` around ${co}.`);
   let filter = { cat: 'All', company: null };
   let data = null;
   const hidden = new Set();
@@ -71,6 +75,8 @@ export async function render(ctx) {
 
   app.innerHTML = `<main class="main">
     <div class="ph in"><h1>${greeting()}</h1><p id="sum"><span class="sk sk-line" style="display:inline-block;width:340px"></span></p></div>
+    ${demoBanner()}
+    ${founder ? '<section class="card fhome in" id="fhome" aria-label="Around you"><div class="sk sk-line" style="width:120px"></div><div class="sk" style="height:28px;width:90%"></div><div class="sk sk-line" style="width:140px;margin-top:6px"></div><div class="sk" style="height:28px;width:70%"></div></section>' : ''}
     <div id="buildBar"></div>
     <div class="filters in" id="filters" role="toolbar" aria-label="Filter feed"></div>
     <div id="feed" class="sec" style="gap:28px">${[0, 1, 2].map(() => `<div class="card fcard"><div class="sk sk-line" style="width:160px"></div><div class="sk" style="height:18px;width:85%"></div><div class="sk sk-line" style="width:60%"></div></div>`).join('')}</div>
@@ -85,7 +91,8 @@ export async function render(ctx) {
     return;
   }
   if (!ctx.isCurrent()) return;
-  $('#sum').textContent = data.partial ? 'Here is what Cala has so far. The rest fills in as it lands.' : data.summary || '';
+  $('#sum').textContent = data.partial ? 'Here is what Cala has so far. The rest fills in as it lands.' : phrase(data.summary) || '';
+  if (founder) drawHome(ctx, co);
 
   const items = () => [...(data.items || [])].sort((a, b) => (b.date || '').localeCompare(a.date || '')).filter(i => !hidden.has(i.id)).map(i => confirmed.has(i.id) ? { ...i, status: 'confirmed' } : i);
   function drawFilters() {
@@ -93,9 +100,9 @@ export async function render(ctx) {
     const ct = c => c === 'All' ? all.length : all.filter(i => i.category === c).length;
     const coName = filter.company ? (companies.find(c => c.id === filter.company)?.name || all.find(i => i.company?.id === filter.company)?.company.name) : null;
     $('#filters').innerHTML = CATS.map(c => `<button type="button" class="fpill ${filter.cat === c ? 'on' : ''}" data-cat="${c}" aria-pressed="${filter.cat === c}">${c}<span class="ct">${ct(c)}</span></button>`).join('')
-      + `<button type="button" class="fpill ${filter.company ? 'on' : ''}" id="coPick" aria-haspopup="menu">${esc(coName || 'All companies')} ▾</button>`;
+      + (founder ? '' : `<button type="button" class="fpill ${filter.company ? 'on' : ''}" id="coPick" aria-haspopup="menu">${esc(coName || 'All companies')} ▾</button>`);
     $$('[data-cat]').forEach(b => b.onclick = () => { filter.cat = b.dataset.cat; draw(); });
-    $('#coPick').onclick = e => {
+    if ($('#coPick')) $('#coPick').onclick = e => {
       const cos = companies.length ? companies : [...new Map(all.map(i => [i.company.id, i.company])).values()];
       openMenu(e.currentTarget, [{ label: 'All companies', id: null, on: !filter.company }, ...cos.map(c => ({ label: c.name, id: c.id, on: filter.company === c.id, hint: String(all.filter(i => i.company?.id === c.id).length) }))], it => { filter.company = it.id; draw(); });
     };
@@ -111,7 +118,7 @@ export async function render(ctx) {
     }
     if (!list.length) {
       const nAll = items().length;
-      feed.innerHTML = `<div class="card state in"><span class="ic">✓</span><b>All quiet</b><span>${nAll ? 'Nothing matches this filter.' : `Watching ${plural(companies.length, 'company', 'companies')}. Nothing has changed around them yet.`}</span>${nAll ? '<button type="button" class="btn" id="clr">Clear filters</button>' : ''}</div>`;
+      feed.innerHTML = `<div class="card state in"><span class="ic">✓</span><b>All quiet</b><span>${nAll ? 'Nothing matches this filter.' : founder ? `Nothing has changed around ${esc(co)} yet.` : `Watching ${plural(companies.length, 'company', 'companies')}. Nothing has changed around them yet.`}</span>${nAll ? '<button type="button" class="btn" id="clr">Clear filters</button>' : ''}</div>`;
       $('#clr') && ($('#clr').onclick = () => { filter = { cat: 'All', company: null }; draw(); });
       return;
     }
@@ -119,7 +126,7 @@ export async function render(ctx) {
     list.forEach(i => { const b = bucket(i.date); if (!groups.has(b)) groups.set(b, []); groups.get(b).push(i); });
     feed.innerHTML = [...groups].map(([name, its]) => {
       const cards = its.filter(isCard), rows = its.filter(i => !isCard(i));
-      return `<section class="sec"><h2 class="h">${esc(name)}</h2><div class="sec stagger">${cards.map(cardHTML).join('')}${rows.length ? `<div class="card">${rows.map(rowHTML).join('')}</div>` : ''}</div></section>`;
+      return `<section class="sec"><h2 class="h">${esc(name)}</h2><div class="sec stagger">${cards.map(c => cardHTML(c, founder)).join('')}${rows.length ? `<div class="card">${rows.map(rowHTML).join('')}</div>` : ''}</div></section>`;
     }).join('') + (data.partial ? skCards(1) : '');
   }
   // First build of a new portfolio: render what has landed, keep polling until the build finishes.
@@ -129,7 +136,7 @@ export async function render(ctx) {
     const st = data.status || [];
     const ready = st.filter(s => s.status !== 'mapping').length;
     const rivals = st.length && st.every(s => s.status === 'rivals');
-    bar.innerHTML = `<div class="card buildbar in" aria-live="polite"><span class="spin" aria-hidden="true"></span><span class="grow">${rivals ? 'Reading rivals, screening news and sanctions' : `Mapping your companies · ${ready} of ${st.length || companies.length} ready`}</span><span class="meta">Updates as Cala answers</span></div>`;
+    bar.innerHTML = `<div class="card buildbar in" aria-live="polite"><span class="spin" aria-hidden="true"></span><span class="grow">${rivals ? 'Reading rivals, screening news and sanctions' : founder ? `Mapping ${esc(co)}` : `Mapping your companies · ${ready} of ${st.length || companies.length} ready`}</span><span class="meta">Updates as Cala answers</span></div>`;
   }
   let pollT;
   async function poll() {
@@ -137,8 +144,8 @@ export async function render(ctx) {
       const d = await api.feed();
       if (!ctx.isCurrent()) return;
       const was = data.items?.length;
-      data = d; $('#sum').textContent = d.partial ? 'Here is what Cala has so far. The rest fills in as it lands.' : d.summary || '';
-      if (!d.partial) { draw(); toast('Perimeter ready'); refreshPortfolio(); return; }
+      data = d; $('#sum').textContent = d.partial ? 'Here is what Cala has so far. The rest fills in as it lands.' : phrase(d.summary) || '';
+      if (!d.partial) { draw(); toast('Perimeter ready'); refreshPortfolio(); if (founder) drawHome(ctx, co); return; }
       if (d.items?.length !== was) draw(); else drawBuild();
     } catch {}
     pollT = setTimeout(poll, 3500);
@@ -147,6 +154,7 @@ export async function render(ctx) {
   draw();
 
   installPathHandlers();
+  $('[data-demo-act]')?.addEventListener('click', e => { if (e.currentTarget.dataset.demoAct === 'me') switchView('me'); else ctx.go('#/welcome'); });
   $('#feed').addEventListener('click', async e => {
     const ov = e.target.closest('[data-overlap]') || (!e.target.closest('button,a,input') && e.target.closest('.fcard.clickable'));
     if (ov) { const id = ov.dataset.overlap || ov.dataset.item; return openOverlap(data.items.find(i => i.id === id), { onDraft: openDraft }); }
@@ -163,6 +171,35 @@ export async function render(ctx) {
     }
   });
 }
+
+/** Shared-demo strip: say what this is and offer the way to your own seat. */
+function demoBanner() {
+  if (!viewingDemo()) return '';
+  const mine = hasProfile();
+  return `<div class="card buildbar demobar in"><span class="demo-badge">Demo</span><span class="grow">${mine ? 'You’re viewing the shared demo portfolio.' : 'A shared demo: four European fintechs, watched from an investor’s seat.'}</span><button type="button" class="btn ${mine ? '' : 'acc'}" data-demo-act="${mine ? 'me' : 'welcome'}">${mine ? 'Back to my profile' : 'Make it yours'}</button></div>`;
+}
+
+/** Founder home: your rivals and the investors around you, straight from the perimeter. */
+async function drawHome(ctx, co) {
+  let per;
+  try { per = await api.perimeter(); } catch { $('#fhome')?.remove(); return; }
+  if (!ctx.isCurrent()) return;
+  const box = $('#fhome'); if (!box) return;
+  const me = (per.companies || [])[0];
+  if (!me) { if (!per.partial) box.remove(); return; }
+  const rivals = me.rivals || [];
+  const inv = [...(me.investors || [])].sort((a, b) => (b.shared_with?.length || 0) - (a.shared_with?.length || 0));
+  const hot = inv.filter(i => i.shared_with?.length);
+  const pill = i => i.shared_with?.length
+    ? entPill({ ...i, type: 'Investor' }, `${shortName(i.name)} · also backs ${i.shared_with[0]}`, 'hot', `data-tip="${esc(`<b>${esc(i.name)}</b><br><span>Backs ${esc(co)} and ${esc(i.shared_with.join(', '))}</span>`)}"`)
+    : entPill({ ...i, type: 'Investor' }, shortName(i.name), 'n');
+  box.innerHTML = `<div class="fh-row"><div class="fh-h"><span class="cap">Your rivals</span><span class="meta">${rivals.length || ''}</span></div>
+      <div class="chips">${rivals.length ? rivals.map(r => entPill({ ...r, type: 'Company' }, shortName(r.name), 'n')).join('') : `<span class="meta">${per.partial ? 'Finding them in Cala…' : 'Cala lists no close rivals yet.'}</span>`}</div></div>
+    <div class="fh-row"><div class="fh-h"><span class="cap">Investors around you</span><span class="meta">${hot.length ? `${hot.length} also ${hot.length === 1 ? 'backs' : 'back'} a rival` : inv.length || ''}</span></div>
+      <div class="chips">${inv.length ? inv.slice(0, 10).map(pill).join('') + (inv.length > 10 ? `<span class="meta" style="align-self:center">+${inv.length - 10} more</span>` : '') : '<span class="meta">No investors in Cala yet.</span>'}</div></div>
+    <div class="fh-f"><span class="meta">From Cala’s knowledge graph, every edge sourced.</span><a class="btn" href="#/map">See the map</a></div>`;
+}
+const shortName = n => String(n || '').replace(/\s+(Fund|Capital)\s+[IVX]+\b.*$/i, '').trim();
 
 const skCards = n => Array.from({ length: n }, () => `<div class="card fcard" aria-hidden="true"><div class="lbls"><span class="sk" style="height:24px;width:96px;border-radius:99px"></span><span class="sk sk-line" style="width:160px"></span></div><div class="sk" style="height:18px;width:80%"></div><div class="sk sk-line" style="width:95%"></div><div class="sk sk-line" style="width:60%"></div></div>`).join('');
 
