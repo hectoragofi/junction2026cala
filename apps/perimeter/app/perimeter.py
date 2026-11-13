@@ -230,7 +230,7 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
         if len(cids) < 2:
             continue
         inv = t["inv"]
-        iref = {"id": inv["id"], "name": inv["name"], "type": inv.get("type", "Investor")}
+        iref = {"id": inv["id"], "name": short_company(inv["name"]), "type": inv.get("type", "Investor")}
         ps = [x for x in cids if universe[x]["kind"] == "portfolio"]
         rs = [x for x in cids if universe[x]["kind"] == "rival"]
         if not ps:

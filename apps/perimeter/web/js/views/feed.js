@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { pathHTML, openOverlap, installPathHandlers } from '../overlap.js';
 import { $, $$, esc, srcChips, entLink, sevPill, statusPill, openMenu, openModal, toast, parseDate, fmtDate, trapFocus, plural } from '../ui.js';
 
 const KIND_LABEL = { overlap_investor: 'Investor overlap', overlap_board: 'Board overlap', funding: 'Funding', mna: 'M&A', regulatory: 'Regulatory', legal: 'Legal', hiring: 'Hiring', news: 'News' };
@@ -40,18 +41,22 @@ function cardHTML(it) {
   const draft = (it.actions || []).includes('draft_note');
   const actions = possible
     ? `<div class="acts yn"><button type="button" class="btn" data-yes="${esc(it.id)}">Yes, it’s them</button><button type="button" class="btn" data-no="${esc(it.id)}">Not this company</button><span class="grow"></span>${srcChips(it.sources)}</div>`
-    : `<div class="acts">${srcChips(it.sources)}<span class="grow"></span>
+    : `<div class="acts">${srcChips(it.sources, overlap && it.path?.length ? 1 : 2)}<span class="grow"></span>
         ${it.severity === 'high' && !overlap && !draft ? `<button type="button" class="btn ghost" data-no="${esc(it.id)}">Not this company</button>` : ''}
+        ${overlap && it.path?.length ? `<button type="button" class="btn" data-overlap="${esc(it.id)}">See the overlap</button>` : ''}
         ${draft ? `<button type="button" class="btn dark" data-draft="${esc(it.id)}"><span>Draft note<span class="mhide"> to founder</span></span></button>` : ''}</div>`;
-  return `<article class="card fcard${possible ? ' possible' : ''}" data-item="${esc(it.id)}">
+  return `<article class="card fcard${possible ? ' possible' : ''}${overlap && it.path?.length ? ' clickable' : ''}" data-item="${esc(it.id)}">
     <div class="lbls">${labels}${metaLine(it)}</div>
     <h3>${esc(it.title)}</h3>
+    ${overlap ? pathHTML(it.path) : ''}
     ${it.body ? `<p>${esc(it.body)}</p>` : ''}
     ${actions}</article>`;
 }
 function rowHTML(it) {
+  const who = it.subject?.name ? `${entLink(it.subject)} · ${esc(it.subject.relation || '')}` : it.company?.name ? entLink(it.company) : '';
+  const when = it.date ? esc(fmtDate(it.date)) : '';
   return `<div class="crow" data-item="${esc(it.id)}"><span class="pill rep">${esc(KIND_LABEL[it.kind] || it.category)}</span>
-    <span class="t">${esc(it.title)}${it.subject?.name || it.company?.name ? ` <span class="meta">· ${entLink(it.subject || it.company)}</span>` : ''}</span>
+    <div class="t"><span class="tt" title="${esc(it.title)}">${esc(it.title)}</span>${who || when ? `<span class="meta">${[who, when].filter(Boolean).join(' · ')}</span>` : ''}</div>
     <span class="srcs">${srcChips(it.sources, 1)}</span></div>`;
 }
 
@@ -112,7 +117,10 @@ export async function render(ctx) {
   }
   draw();
 
+  installPathHandlers();
   $('#feed').addEventListener('click', async e => {
+    const ov = e.target.closest('[data-overlap]') || (!e.target.closest('button,a,input') && e.target.closest('.fcard.clickable'));
+    if (ov) { const id = ov.dataset.overlap || ov.dataset.item; return openOverlap(data.items.find(i => i.id === id), { onDraft: openDraft }); }
     const d = e.target.closest('[data-draft]');
     if (d) return openDraft(data.items.find(i => i.id === d.dataset.draft));
     const y = e.target.closest('[data-yes]');

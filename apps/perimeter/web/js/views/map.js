@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { $, $$, esc, srcChips, entPill, entLink, fmtNum, plural, nm } from '../ui.js';
 import { mountGraph } from './graph.js';
+import { pathHTML, openOverlap, installPathHandlers } from '../overlap.js';
 
 const VIEW_KEY = 'perimeter-map-view';
 const HOT_KINDS = /board|shared|overlap|rival in/i;
@@ -9,6 +10,9 @@ export async function render(ctx) {
   const { app } = ctx;
   let view = 'graph';
   try { view = localStorage.getItem(VIEW_KEY) || 'graph'; } catch {}
+  const focus = ctx.qs?.get('focus') || null;
+  const focusWith = (ctx.qs?.get('with') || '').split(',').filter(Boolean);
+  if (focus) view = 'graph';
   app.innerHTML = `<main class="main wide">
     <div class="maphead in"><div class="ph"><h1>Your perimeter</h1><p id="mapSub"><span class="sk sk-line" style="display:inline-block;width:420px;max-width:80vw"></span></p></div>
       <div class="seg" role="tablist" aria-label="Map view"><button type="button" role="tab" data-v="graph">Graph</button><button type="button" role="tab" data-v="lanes">Lanes</button></div></div>
@@ -46,6 +50,14 @@ export async function render(ctx) {
     if (v === 'graph') {
       box.innerHTML = `<h2 class="h">Knowledge graph · ${fmtNum(countNodes(cos))} entities, ${fmtNum(countEdges(cos))} links</h2><div class="card graph-wrap in" id="gw"></div>`;
       graph = mountGraph($('#gw'), cos);
+      if (focus) {
+        const name = graph.focus(focus, focusWith);
+        if (name) {
+          $('#gw').insertAdjacentHTML('beforeend', `<div class="gfocus in"><span>Showing <b>${esc(name)}</b> and its links</span><button type="button" class="btn" data-clear-focus>Clear</button></div>`);
+          $('#gw [data-clear-focus]').onclick = () => { graph.focus(null); $('#gw .gfocus')?.remove(); history.replaceState(null, '', '#/map'); };
+          $('#viewBox').scrollIntoView({ block: 'start' });
+        }
+      }
     } else {
       box.innerHTML = `<h2 class="h">Who is around each company</h2><div class="card in">${lanesHTML(cos)}</div>`;
     }
@@ -56,12 +68,21 @@ export async function render(ctx) {
   const sigs = data.signals || [];
   if (sigs.length) {
     const hot = sigs.filter(s => HOT_KINDS.test(s.kind)), rest = sigs.filter(s => !HOT_KINDS.test(s.kind));
-    const sigHTML = s => `<div class="sig"><span class="pill ${HOT_KINDS.test(s.kind) ? 'hot' : 'n'}">${esc(s.kind)}</span><div class="b"><span>${linkify(s.text, s.entities)}</span>${(s.sources || []).length ? `<div class="chips">${srcChips(s.sources, 2)}</div>` : ''}</div></div>`;
+    const sigHTML = (s, i) => `<div class="sig${s.path?.length ? ' clickable' : ''}" data-sig="${i}"><span class="pill ${HOT_KINDS.test(s.kind) ? 'hot' : 'n'}">${esc(s.kind)}</span><div class="b"><span>${linkify(s.text, s.entities)}</span>${pathHTML(s.path)}${(s.sources || []).length ? `<div class="chips">${srcChips(s.sources, 2)}</div>` : ''}</div></div>`;
+    sigs.forEach((s, i) => { s._i = i; });
     $('#sigBox').innerHTML = `<div class="sigs">
-      <section class="sec"><h2 class="h">Signals only a knowledge graph can see</h2><div class="card stagger">${(hot.length ? hot : sigs.slice(0, Math.ceil(sigs.length / 2))).map(sigHTML).join('')}</div></section>
-      ${(hot.length ? rest : sigs.slice(Math.ceil(sigs.length / 2))).length ? `<section class="sec"><h2 class="h">Around your companies</h2><div class="card stagger">${(hot.length ? rest : sigs.slice(Math.ceil(sigs.length / 2))).map(sigHTML).join('')}</div></section>` : ''}
+      <section class="sec"><h2 class="h">Signals only a knowledge graph can see</h2><div class="card stagger">${(hot.length ? hot : sigs.slice(0, Math.ceil(sigs.length / 2))).map(s => sigHTML(s, s._i)).join('')}</div></section>
+      ${(hot.length ? rest : sigs.slice(Math.ceil(sigs.length / 2))).length ? `<section class="sec"><h2 class="h">Around your companies</h2><div class="card stagger">${(hot.length ? rest : sigs.slice(Math.ceil(sigs.length / 2))).map(s => sigHTML(s, s._i)).join('')}</div></section>` : ''}
     </div>`;
   }
+  installPathHandlers();
+  $('#sigBox').addEventListener('click', e => {
+    if (e.target.closest('button,a')) return;
+    const row = e.target.closest('.sig.clickable'); if (!row) return;
+    const s = sigs[+row.dataset.sig];
+    const kind = /board/i.test(s.kind) ? 'overlap_board' : /talent/i.test(s.kind) ? 'hiring' : 'overlap_investor';
+    openOverlap({ ...s, kind, title: s.text });
+  });
   ctx.onCleanup(() => graph?.destroy());
 }
 

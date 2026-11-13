@@ -73,6 +73,7 @@ export function mountGraph(wrap, cos) {
     }
     // springs
     edges.forEach(e => {
+      if (e.temp) return;
       const a = e.a, b = e.b;
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
       const L = e.kind === 'coco' ? 230 : e.b.hot ? 150 : e.kind === 'person' ? 62 : 92;
@@ -172,9 +173,10 @@ export function mountGraph(wrap, cos) {
   draw(); raf = requestAnimationFrame(loop);
 
   // ---------- hover highlight ----------
-  let hovered = null;
+  let hovered = null, pinned = null;
   function highlight(n, ev) {
     hovered = n;
+    if (!n && pinned) { applyFocus(); hideTip(); return; }
     if (!n) { svg.classList.remove('dim'); nodes.forEach(x => { x.el.classList.remove('fade'); x.lab.classList.remove('fade', 'lit'); }); edges.forEach(e => e.el.classList.remove('fade', 'lit')); applyLabels(); hideTip(); return; }
     const near = nb.get(n);
     svg.classList.add('dim');
@@ -243,5 +245,34 @@ export function mountGraph(wrap, cos) {
   const ro = new ResizeObserver(() => { if (!userCam) { vb = fitBox(); setVB(); } });
   ro.observe(wrap);
 
-  return { destroy() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); hideTip(); } };
+  // ---------- focus (deep link #/map?focus=<id>&with=<ids>) ----------
+  function applyFocus() {
+    const { n, extra } = pinned;
+    const on = new Set([n, ...nb.get(n), ...extra]);
+    svg.classList.add('dim');
+    nodes.forEach(x => { const o = on.has(x); x.el.classList.toggle('fade', !o); x.lab.classList.toggle('fade', !o); x.lab.classList.toggle('lit', o); x.lab.style.opacity = o ? 1 : 0; });
+    edges.forEach(e => { const o = e.temp || (e.a === n || e.b === n) || (extra.has(e.a) && extra.has(e.b)) || (extra.has(e.a) && e.b === n) || (extra.has(e.b) && e.a === n); e.el.classList.toggle('lit', o); e.el.classList.toggle('fade', !o); });
+  }
+  function focus(id, withIds = []) {
+    for (let i = edges.length - 1; i >= 0; i--) if (edges[i].temp) { edges[i].el.remove(); edges.splice(i, 1); }
+    if (!id) { pinned = null; highlight(null); return null; }
+    const n = nodes.find(x => x.id === id);
+    if (!n) return null;
+    // links in the overlap path that the graph doesn't draw (e.g. investor -> rival): add them, dashed
+    const chain = withIds.map(i => nodes.find(x => x.id === i)).filter(Boolean);
+    const linked = (a, b) => edges.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a));
+    chain.forEach((a, i) => {
+      const b = chain[i + 1];
+      if (!b || linked(a, b)) return;
+      const e = { a, b, s: a.id, t: b.id, kind: 'temp', temp: true, hot: true, el: document.createElementNS(NS, 'line') };
+      e.el.setAttribute('class', 'g-edge hot lit'); e.el.setAttribute('stroke-dasharray', '4 4');
+      gE.appendChild(e.el); edges.push(e);
+    });
+    draw();
+    pinned = { n, extra: new Set(withIds.map(i => nodes.find(x => x.id === i)).filter(Boolean)) };
+    applyFocus();
+    return n.name;
+  }
+
+  return { focus, destroy() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); hideTip(); } };
 }

@@ -21,7 +21,7 @@ export function fmtDate(d, { year = 'auto' } = {}) {
   if (/^\d{4}$/.test(d)) return d;
   const x = parseDate(d);
   if (!x) return String(d);
-  if (/^\d{4}-\d{2}$/.test(d)) return `${MONTHS[x.getMonth()]} ${x.getFullYear()}`;
+  if (/^\d{4}-\d{2}$/.test(d)) return year === true || x.getFullYear() !== new Date().getFullYear() ? `${MONTHS[x.getMonth()]} ${x.getFullYear()}` : MONTHS[x.getMonth()];
   const showY = year === true || (year === 'auto' && x.getFullYear() !== new Date().getFullYear());
   return `${x.getDate()} ${MONTHS[x.getMonth()]}${showY ? ' ' + x.getFullYear() : ''}`;
 }
@@ -49,7 +49,7 @@ export function plural(n, one, many = one + 's') { return `${n} ${n === 1 ? one 
 // ---------- registries so chips can carry rich objects through innerHTML ----------
 const reg = new Map();
 let regId = 0;
-function keep(obj) { const id = 'r' + (++regId); reg.set(id, obj); return id; }
+export function keep(obj) { const id = 'r' + (++regId); reg.set(id, obj); return id; }
 export function lookup(id) { return reg.get(id); }
 
 function srcLabel(s) {
@@ -270,6 +270,24 @@ export async function openEntity(ref) {
     el.querySelector('.sheet-b').innerHTML = `<div class="card scard"><span class="cap">Source error</span><span>Cala didn’t respond for ${esc(ref.name)}.</span><button type="button" class="btn" style="align-self:flex-start" data-retry>Retry</button></div>`;
     el.querySelector('[data-retry]').onclick = () => openEntity(ref);
   }
+}
+
+// Generic side sheet (same chrome as the entity sheet) for overlap details etc.
+export function openPanel({ cap = '', title = '', body = '', label = title }) {
+  closeLayer(); hideTip();
+  const prev = document.activeElement;
+  closeSheet();
+  const scrim = document.createElement('div'); scrim.className = 'sheet-scrim';
+  const el = document.createElement('aside'); el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', label);
+  el.innerHTML = `<div class="sheet-h"><div class="grow" style="min-width:0;display:flex;flex-direction:column;gap:4px"><span class="cap">${esc(cap)}</span><h2>${esc(title)}</h2></div><button type="button" class="x" aria-label="Close" data-close-sheet>×</button></div><div class="sheet-b stagger">${body}</div>`;
+  document.body.append(scrim, el);
+  document.body.style.overflow = 'hidden';
+  sheet = { el, scrim, prev };
+  scrim.onclick = closeSheet;
+  el.addEventListener('click', e => { if (e.target.closest('[data-close-sheet]')) closeSheet(); });
+  el.addEventListener('keydown', e => trapFocus(e, el));
+  el.querySelector('.x').focus();
+  return el;
 }
 
 // ---------- global delegation ----------
