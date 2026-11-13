@@ -286,6 +286,7 @@ export async function handle(method, path, body) {
     return { companies: portfolioCompanies(), building, built_at: pf.built_at };
   }
   if (p === '/api/portfolio' && method === 'POST') { startBuild(body.ids || []); return { ok: true }; }
+  if (p === '/api/rebuild') { startBuild(pf.ids); return { ok: true }; }
   if (p === '/api/portfolio/demo') { startBuild(PORTFOLIO_KEYS.map(k => co[k].id)); return { ok: true }; }
   if (p === '/api/perimeter') return perimeter();
   if (p === '/api/feed') return feed();

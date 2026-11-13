@@ -43,6 +43,7 @@ export const api = {
   portfolio: () => req('GET', '/api/portfolio'),
   savePortfolio: ids => req('POST', '/api/portfolio', { ids }),
   demo: () => req('POST', '/api/portfolio/demo'),
+  rebuild: () => req('POST', '/api/rebuild'),
   perimeter: () => req('GET', '/api/perimeter'),
   feed: () => req('GET', '/api/feed'),
   ask: q => req('POST', '/api/ask', { q }),

@@ -154,7 +154,15 @@ export function renderBuilding(ctx) {
         list.innerHTML = p.companies.map(c => `<div class="row"><span class="grow" style="font-weight:500;text-align:left">${esc(c.name)}</span><span class="meta">${esc(c.hq || '')}</span>${p.building ? '<span class="spin" aria-label="Building"></span>' : '<span class="tick">✓</span>'}</div>`).join('');
       }
       const s = Math.round((Date.now() - started) / 1000);
-      if ($('#bTime') && s > 8) $('#bTime').textContent = `${s} s · usually under a minute`;
+      if ($('#bTime') && s > 8) $('#bTime').textContent = s < 60 ? `${s} s · usually under a minute` : `${Math.floor(s / 60)} min ${s % 60} s · a first build reads a lot of the graph. You can leave this page.`;
+      if (p.progress && $('#bLine')) { clearInterval(lt); $('#bLine').textContent = /^[a-z ]+$/.test(p.progress) ? `Mapping ${p.progress}…` : p.progress; }
+      if (!p.building && p.error) {
+        clearInterval(lt);
+        $('#bLine').textContent = 'Something went wrong while mapping.';
+        $('#bTime').innerHTML = `<span style="display:flex;flex-direction:column;gap:10px;align-items:center">${esc(p.error)}<button type="button" class="btn" id="bRetry">Retry</button></span>`;
+        $('#bRetry').onclick = async () => { try { await api.rebuild(); renderBuilding(ctx); } catch (e) { toast(e.message); } };
+        return;
+      }
       if (!p.building) {
         clearInterval(lt);
         toast(`Perimeter ready · ${plural(p.companies?.length || 0, 'company', 'companies')}`);
