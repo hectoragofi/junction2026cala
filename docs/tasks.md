@@ -19,6 +19,7 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Done
 
+- [x] Ask anything: Claude over Cala answering with generated widgets, /ask page, POST /api/agent (owner: hector)
 - [x] Investor check for founders (replaces Raise view): /investors page, /api/investor/* (owner: hector)
 - [x] Perimeter QA pass: feed rows, sources, titles, overlap explainer, skeletons, progressive loading (owner: hector)
 - [x] Demo lock: DEMO_LOCK=1 blocks custom portfolio/rebuild unless X-Admin-Token (owner: hector)

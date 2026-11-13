@@ -2,6 +2,13 @@
 
 Add a new entry at the top each time.
 
+## 2026-11-14 - hector (ask anything)
+
+- Done: chat-first page at `/ask` (`web/ask.html`) and `POST /api/agent` (`app/agent.py`, SSE: step / widget / done / error). Claude (`claude-opus-5-5`, low effort) calls Cala through tools (find, profile, deals, rivals, investor_overlap, research) and answers only with widgets: headline, stats, bars, timeline, list, table, path, followups.
+- State: answers take 15-25 s on cached or fast Cala calls; `rivals`, `investor_overlap` and `research` can take a minute cold. `AskIn.profile` (role, my_company, portfolio, rivals) is passed to the model as context; `ask.html` reads it from `GET /api/profile` when that exists.
+- Next: decide whether `/ask` becomes the front page; link it from the header nav; the earlier `/investors` page was rejected by Hector and can be removed.
+- Gotchas: needs `ANTHROPIC_API_KEY` in `~/hack/.env`. Cala's search order is already relevance-ranked: do not re-sort candidates by name similarity (it picks empty duplicate records).
+
 ## 2026-11-13 - hector (investor check)
 
 - Done: founder-side "check your investor" page at `/investors` (`web/investor.html`, `app/investor.py`): search an investor, see conflict with your rivals, deals per year, latest deals, co-investors, portfolio, and Ask (Cala knowledge search).

@@ -502,6 +502,18 @@ if investor_router is not None:
     async def investors_page():
         return FileResponse(WEB_DIR / "investor.html", headers={"Cache-Control": "no-cache"})
 
+# Ask anything: Claude answers with generated widgets over Cala (app/agent.py, web/ask.html).
+try:
+    from .agent import router as agent_router
+except ImportError:
+    agent_router = None
+if agent_router is not None:
+    app.include_router(agent_router)
+
+    @app.get("/ask", include_in_schema=False)
+    async def ask_page():
+        return FileResponse(WEB_DIR / "ask.html", headers={"Cache-Control": "no-cache"})
+
 
 @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 async def web(path: str):
