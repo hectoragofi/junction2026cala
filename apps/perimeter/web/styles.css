@@ -176,7 +176,7 @@ button.pill.hot:hover{background:#E2E7FF}
 .md code{font-size:13px;background:var(--fill);padding:1px 5px;border-radius:5px}
 .md a{color:var(--accent-ink)}
 .md strong{font-weight:600}
-.md table{border-collapse:collapse;font-size:13px}.md td,.md th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+.md .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}.md table{border-collapse:collapse;font-size:13px;width:100%}.md th{background:var(--bg);font-weight:600}.md tr:last-child td{border-bottom:0}.md td:first-child,.md th:first-child{border-left:0}.md td:last-child,.md th:last-child{border-right:0}.md thead th{border-top:0}.md td,.md th{border:1px solid var(--line);padding:6px 10px;text-align:left}
 .answer-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 /* ---------- start ---------- */

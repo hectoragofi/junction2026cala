@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { $, $$, esc, srcChips, entPill, entLink, fmtNum, plural } from '../ui.js';
+import { $, $$, esc, srcChips, entPill, entLink, fmtNum, plural, nm } from '../ui.js';
 import { mountGraph } from './graph.js';
 
 const VIEW_KEY = 'perimeter-map-view';
@@ -93,7 +93,7 @@ function lanesHTML(cos) {
     return shown.map(e => {
       if (pf.has(e.id)) return entPill({ ...e, type: 'Company' }, e.name + ' · yours', 'hot', `data-tip="${esc(`<b>${esc(e.name)}</b><br><span>Rival, and also in your portfolio</span>`)}"`);
       const hot = e.shared_with?.length;
-      const label = fmt ? fmt(e) : e.name;
+      const label = fmt ? fmt({ ...e, name: nm(e.name) }) : nm(e.name);
       const tip = hot ? `<b>${esc(e.name)}</b><br><span>Also touches ${esc(e.shared_with.join(', '))}</span>` : `<b>${esc(e.name)}</b>${e.role || e.sub ? `<br><span>${esc(e.role || e.sub)}</span>` : ''}`;
       return entPill({ ...e, type: e.type || type }, label + (hot ? ` · also ${e.shared_with.slice(0, 2).join(', ')}${e.shared_with.length > 2 ? '…' : ''}` : ''), hot ? 'hot' : 'n', `data-tip="${esc(tip)}"`);
     }).join('') + (more > 0 ? `<button type="button" class="pill n" data-more data-tip="${esc(sorted.slice(MAX).map(x => esc(x.name)).join(', '))}">+${more}</button>` : '');

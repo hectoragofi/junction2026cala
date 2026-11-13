@@ -1,5 +1,5 @@
 // Hand-written force-directed perimeter graph (SVG). No dependencies.
-import { esc, initials, openEntity, floatTip, hideTip } from '../ui.js';
+import { esc, initials, openEntity, floatTip, hideTip, nm } from '../ui.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const KIND_R = { co: 24, rival: 8, inv: 9, person: 6 };
@@ -13,7 +13,7 @@ function build(cos) {
   const add = (c, e, kind, type) => {
     const k = key(e);
     let n = nodes.get(k);
-    if (!n) { n = { id: e.id, name: e.name, type: e.type || type, kind, sub: e.role || e.sub || '', owners: new Set(), shared: new Set() }; nodes.set(k, n); }
+    if (!n) { n = { id: e.id, name: nm(e.name), type: e.type || type, kind, sub: e.role || e.sub || '', owners: new Set(), shared: new Set() }; nodes.set(k, n); }
     if (n.kind !== 'co') n.owners.add(c.name);
     (e.shared_with || []).forEach(s => n.shared.add(s));
     const ek = [c.id, k].sort().join('|');

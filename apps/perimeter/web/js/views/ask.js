@@ -28,7 +28,7 @@ export function md(src) {
   const out = []; let list = null; let para = []; let table = null;
   const flushP = () => { if (para.length) { out.push(`<p>${inline(para.join(' '))}</p>`); para = []; } };
   const flushL = () => { if (list) { out.push(`<${list.t}>${list.items.map(i => `<li>${inline(i)}</li>`).join('')}</${list.t}>`); list = null; } };
-  const flushT = () => { if (table) { const [h, ...rows] = table.filter(r => !/^\s*\|?\s*:?-{2,}/.test(r)); const cells = r => r.replace(/^\s*\||\|\s*$/g, '').split('|').map(c => c.trim()); out.push(`<table><thead><tr>${cells(h).map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`); table = null; } };
+  const flushT = () => { if (table) { const [h, ...rows] = table.filter(r => !/^\s*\|?\s*:?-{2,}/.test(r)); const cells = r => r.replace(/^\s*\||\|\s*$/g, '').split('|').map(c => c.trim()); out.push(`<div class="tbl"><table><thead><tr>${cells(h).map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`); table = null; } };
   for (const ln of lines) {
     let m;
     if (/^\s*\|.*\|\s*$/.test(ln)) { flushP(); flushL(); (table ||= []).push(ln); continue; } else flushT();
@@ -81,7 +81,7 @@ function mountAsk(root, { compact }) {
       const r = await api.ask(q);
       if (my !== seq) return; clear();
       body.innerHTML = `<div class="sec in" style="gap:14px">
-        <div class="answer-meta"><span class="cap">Answer from Cala</span><span class="meta">· ${(r.seconds ?? (Date.now() - t0) / 1000).toFixed(0)} s</span></div>
+        <div class="answer-meta"><span class="cap">Answer from Cala</span><span class="meta">· ${Math.max(r.seconds || 0, (Date.now() - t0) / 1000).toFixed(0)} s</span></div>
         <div class="md">${md(r.answer_md)}</div>
         ${(r.entities || []).length ? `<div class="sec" style="gap:8px"><span class="cap">Mentioned</span><div class="chips">${r.entities.map(entChip).join('')}</div></div>` : ''}
         ${(r.sources || []).length ? `<div class="sec" style="gap:8px"><span class="cap">Sources</span><div class="chips">${srcChips(r.sources, 8)}</div></div>` : ''}

@@ -38,6 +38,12 @@ export function initials(name) {
 export function host(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
 }
+// Cala sometimes returns registry-style ALL-CAPS names; show them in title case.
+export function nm(name) {
+  const n = String(name ?? '');
+  if (n.length < 5 || n !== n.toUpperCase() || !/[A-Z]/.test(n)) return n;
+  return n.split(/(\s+)/).map(w => (w.replace(/[^A-Z]/g, '').length <= 3 ? w : w[0] + w.slice(1).toLowerCase())).join('');
+}
 export function plural(n, one, many = one + 's') { return `${n} ${n === 1 ? one : many}`; }
 
 // ---------- registries so chips can carry rich objects through innerHTML ----------
@@ -66,7 +72,7 @@ export function srcChips(list, max = 2) {
 export function entLink(ref, label) {
   if (!ref || !ref.name) return '';
   if (!ref.id) return esc(label ?? ref.name);
-  return `<button type="button" class="ent" data-ent="${keep(ref)}">${esc(label ?? ref.name)}</button>`;
+  return `<button type="button" class="ent" data-ent="${keep(ref)}">${esc(label ?? nm(ref.name))}</button>`;
 }
 export function avatar(ref) {
   const t = (ref.type || '').toLowerCase();
@@ -74,10 +80,10 @@ export function avatar(ref) {
   return `<span class="av ${cls}" aria-hidden="true">${esc(initials(ref.name))}</span>`;
 }
 export function entChip(ref) {
-  return `<button type="button" class="echip" data-ent="${keep(ref)}">${avatar(ref)}${esc(ref.name)}</button>`;
+  return `<button type="button" class="echip" data-ent="${keep(ref)}">${avatar(ref)}${esc(nm(ref.name))}</button>`;
 }
 export function entPill(ref, label, cls = 'n', extra = '') {
-  return `<button type="button" class="pill ${cls}" data-ent="${keep(ref)}" ${extra}>${esc(label ?? ref.name)}</button>`;
+  return `<button type="button" class="pill ${cls}" data-ent="${keep(ref)}" ${extra}>${esc(label ?? nm(ref.name))}</button>`;
 }
 export function tipAttr(text) { return `data-tip="${esc(text)}"`; }
 
@@ -235,7 +241,7 @@ export async function openEntity(ref) {
   const scrim = document.createElement('div'); scrim.className = 'sheet-scrim';
   const el = document.createElement('aside'); el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', ref.name || 'Entity');
   const head = (e) => `<div class="sheet-h">${avatar(e).replace('class="av', 'style="width:40px;height:40px;font-size:14px;border-radius:' + ((e.type || '').toLowerCase() === 'company' ? '12px' : '99px') + '" class="av')}
-      <div class="grow" style="min-width:0;display:flex;flex-direction:column;gap:2px"><span class="cap">${esc(e.type || 'Entity')}${e.sub ? ' · ' + esc(e.sub) : ''}</span><h2>${esc(e.name)}</h2></div>
+      <div class="grow" style="min-width:0;display:flex;flex-direction:column;gap:2px"><span class="cap">${esc(e.type || 'Entity')}${e.sub ? ' · ' + esc(e.sub) : ''}</span><h2>${esc(nm(e.name))}</h2></div>
       <button type="button" class="x" aria-label="Close" data-close-sheet>×</button></div>`;
   el.innerHTML = head(ref) + `<div class="sheet-b"><div class="sk sk-line" style="width:90%"></div><div class="sk sk-line" style="width:70%"></div><div class="sk" style="height:120px"></div><div class="sk" style="height:80px"></div></div>`;
   document.body.append(scrim, el);
