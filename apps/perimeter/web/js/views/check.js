@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { $, $$, esc, srcChips, srcChip, entLink, sevPill, statusPill, fmtDate, fmtMonth, toast, plural, lookup, openPopover } from '../ui.js';
+import { nm, $, $$, esc, srcChips, srcChip, entLink, sevPill, statusPill, fmtDate, fmtMonth, toast, plural, lookup, openPopover } from '../ui.js';
 import { refreshPortfolio } from '../app.js';
 
 const STEPS = [
@@ -78,7 +78,7 @@ function run(ctx, q) {
 function factBtn(f, i, n) {
   const cls = `fact${i >= n - (n % 2 === 0 ? 2 : 1) ? ' last' : ''}${i === n - 2 && n % 2 === 0 ? ' last2' : ''}`;
   const has = f.sources?.length;
-  return `<${has ? `button type="button" data-fact="${i}"` : 'div'} class="${cls}"><span class="k">${esc(f.label)}${has ? '<span class="dot" aria-hidden="true"></span>' : ''}</span><span class="v">${esc(f.value || '—')}</span></${has ? 'button' : 'div'}>`;
+  return `<${has ? `button type="button" data-fact="${i}"` : 'div'} class="${cls}"><span class="k">${esc(f.label)}${has ? '<span class="dot" aria-hidden="true"></span>' : ''}</span><span class="v">${esc((/legal name|also known/i.test(f.label) ? nm(f.value) : f.value) || '—')}</span></${has ? 'button' : 'div'}>`;
 }
 
 function renderReport(ctx, q, r) {
@@ -95,7 +95,7 @@ function renderReport(ctx, q, r) {
   ctx.app.innerHTML = `<main class="main stagger">
     <div class="check-head">
       <span class="meta">Checked ${esc(checked)} · last 12 months · ${Math.round(r.seconds || 0)} s</span>
-      <h1>${esc(c.name || q)}</h1>
+      <h1>${esc(nm(c.name || q))}</h1>
       <div class="chips" style="align-items:center">${(c.tags || []).filter(Boolean).map(t => `<span class="pill rep">${esc(t)}</span>`).join('')}
         ${c.lei ? `<span class="note" style="margin-left:4px">Matched in Cala by LEI</span>` : c.website ? `<span class="note" style="margin-left:4px">${esc(c.website)}</span>` : ''}</div>
       ${c.description ? `<p class="muted" style="max-width:600px">${esc(c.description)}</p>` : ''}
@@ -114,7 +114,7 @@ function renderReport(ctx, q, r) {
           <span class="t">${esc(f.title)}</span>
           <div class="acts" style="gap:8px">${f.body ? `<span class="muted" style="font-size:13px">${esc(f.body)}</span>` : ''}${srcChips(f.sources, 1)}</div></div>`).join('')}</div>`
       : `<div class="card state"><span class="ic">✓</span><b>No adverse findings</b><span>In Cala and the news, ${esc(r.period || 'last 12 months')}.</span></div>`}
-      ${r.sanctions ? `<div class="sanc"><span class="tick ${r.sanctions.clear ? '' : 'warn'}">${r.sanctions.clear ? '✓' : '!'}</span><span class="grow">Sanctions: ${esc(r.sanctions.text || (r.sanctions.clear ? `no matches across ${r.sanctions.screened} entities.` : 'possible match.'))}</span>${srcChips(r.sanctions.sources, 1)}</div>` : ''}
+      ${r.sanctions ? `<div class="sanc"><span class="tick ${r.sanctions.clear ? '' : 'warn'}">${r.sanctions.clear ? '✓' : '!'}</span><span class="grow">${/^sanction/i.test(r.sanctions.text || '') ? '' : 'Sanctions: '}${esc(r.sanctions.text || (r.sanctions.clear ? `no matches across ${r.sanctions.screened} entities.` : 'possible match.'))}</span>${srcChips(r.sanctions.sources, 1)}</div>` : ''}
     </section>
 
     ${section('Company', facts.length ? `<div class="card facts">${facts.map((f, i) => factBtn(f, i, facts.length)).join('')}</div>` : '', 'Every field with a dot opens its Cala source and date.')}
