@@ -168,11 +168,22 @@ class PortfolioIn(BaseModel):
     ids: list[str]
 
 
+DEMO_LOCK = os.environ.get("DEMO_LOCK", "") == "1"
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
+
+def _locked(request: Request) -> bool:
+    """With DEMO_LOCK=1 public visitors cannot replace or rebuild the shared portfolio."""
+    return DEMO_LOCK and not (ADMIN_TOKEN and request.headers.get("x-admin-token") == ADMIN_TOKEN)
+
+
 @app.post("/api/portfolio")
-async def set_portfolio(body: PortfolioIn):
+async def set_portfolio(body: PortfolioIn, request: Request):
     ids = list(dict.fromkeys(i for i in body.ids if i))[:12]
     if not ids:
         raise HTTPException(400, "ids required")
+    if ids != DEMO_PORTFOLIO and _locked(request):
+        raise HTTPException(403, "This public demo is locked to the sample portfolio. Use Check to look up any company.")
     cards = [c for c in await asyncio.gather(*[_company_card(i) for i in ids]) if c]
     STATE.update({"portfolio_ids": ids, "portfolio": cards, "built": None, "built_at": None})
     save_state()
@@ -181,14 +192,16 @@ async def set_portfolio(body: PortfolioIn):
 
 
 @app.post("/api/portfolio/demo")
-async def demo_portfolio():
+async def demo_portfolio(request: Request):
     if STATE.get("portfolio_ids") == DEMO_PORTFOLIO and STATE.get("built"):
         return {"ok": True}
-    return await set_portfolio(PortfolioIn(ids=DEMO_PORTFOLIO))
+    return await set_portfolio(PortfolioIn(ids=DEMO_PORTFOLIO), request)
 
 
 @app.post("/api/rebuild")
-async def rebuild():
+async def rebuild(request: Request):
+    if _locked(request) and STATE.get("built"):
+        raise HTTPException(403, "Rebuild is disabled on the public demo.")
     if not STATE.get("portfolio_ids"):
         raise HTTPException(400, "no portfolio")
     start_build(STATE["portfolio_ids"])
@@ -477,6 +490,19 @@ async def entity(eid: str):
 
 
 # --------------------------------------------------------------------------- static web
+# Founder-side investor diligence (owned by a separate workstream); enabled once app/investor.py exists.
+try:
+    from .investor import router as investor_router
+except ImportError:
+    investor_router = None
+if investor_router is not None:
+    app.include_router(investor_router)
+
+    @app.get("/investors", include_in_schema=False)
+    async def investors_page():
+        return FileResponse(WEB_DIR / "investor.html", headers={"Cache-Control": "no-cache"})
+
+
 @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 async def web(path: str):
     if path.startswith("api/"):

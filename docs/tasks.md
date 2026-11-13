@@ -14,10 +14,11 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Doing
 
-- [ ] Perimeter QA pass: feed rows, sources, titles, overlap explainer, skeletons, progressive loading (owner: hector, branch: hector/perimeter)
-- [ ] Raise view: #/raise screen, "Raise a round" entry in Start, mock fixture (owner: hector, branch: hector/perimeter)
-- [ ] Demo lock: DEMO_LOCK env so public visitors cannot reset the shared portfolio (owner: hector, branch: hector/perimeter)
+- [ ] Investor diligence for founders (replaces Raise view): /investors page, /api/investor/* (owner: hector, second session)
 
 ## Done
+
+- [x] Perimeter QA pass: feed rows, sources, titles, overlap explainer, skeletons, progressive loading (owner: hector)
+- [x] Demo lock: DEMO_LOCK=1 blocks custom portfolio/rebuild unless X-Admin-Token (owner: hector)
 
 - [x] Perimeter prototype: Cala-backed portfolio watch (feed, map, check, ask) (owner: hector)
