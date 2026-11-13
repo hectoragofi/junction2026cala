@@ -68,7 +68,7 @@ export function renderChrome(active) {
   $('#hdr').className = 'hdr' + (bare ? ' bare' : '');
   $('#hdr').innerHTML = `<div class="hdr-in">
     <a href="#/" class="logo" aria-label="Perimeter home"><span class="logo-mark"></span>Perimeter</a>
-    ${hasPf && !bare ? `<nav class="seg" aria-label="Main">${link('feed', 'Feed', '#/')}${link('map', 'Map', '#/map')}${link('check', 'Check', '#/check')}<a href="/ask">Ask</a></nav>` : ''}
+    ${hasPf && !bare ? `<nav class="seg" aria-label="Main"><a href="/">Ask</a>${link('feed', 'Feed', '#/')}${link('map', 'Map', '#/map')}${link('check', 'Check', '#/check')}</nav>` : ''}
     <div class="hdr-right">
       ${apiState.mock ? `<span class="mockbadge" title="${esc(apiState.reason)}">Demo data</span>` : ''}
       ${bare ? '' : `<button type="button" class="askbtn" data-open-ask>Ask anything <kbd class="kbd">${isMac ? '⌘' : 'Ctrl'} K</kbd></button>

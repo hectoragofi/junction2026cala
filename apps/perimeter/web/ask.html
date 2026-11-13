@@ -28,17 +28,33 @@ input{font:inherit;color:var(--ink)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:999px}
 h1,h2,p{margin:0}
 
-.hdr{height:60px;max-width:1040px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
-.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;text-decoration:none}
-.logo i{width:18px;height:18px;border-radius:6px;border:2px solid var(--ink);display:block;position:relative}
+.hdr{position:sticky;top:0;z-index:30;background:rgba(250,250,250,.85);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.hdr-in{max-width:1240px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:16px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;text-decoration:none;flex:1 1 0;color:var(--ink)}
+.logo i{width:18px;height:18px;border-radius:6px;border:2px solid var(--ink);display:block;position:relative;flex-shrink:0}
 .logo i::after{content:"";position:absolute;inset:3px;border-radius:2px;background:var(--accent);transform:scale(0);transition:transform .4s var(--ease)}
 .logo:hover i::after{transform:scale(1)}
-.logo,.side{flex:1 1 0}.side{display:flex;justify-content:flex-end}
-.nav{display:flex;gap:2px;padding:3px;background:var(--fill);border-radius:999px}
-.nav a{text-decoration:none;font-size:13px;font-weight:500;padding:6px 14px;border-radius:999px;color:var(--muted);white-space:nowrap;transition:color .15s}
-.nav a:hover{color:var(--ink)}
-.nav .on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
-@media (max-width:640px){.hdr{flex-wrap:wrap;height:auto;padding-top:10px;row-gap:8px}.nav{order:3;width:100%;overflow-x:auto;justify-content:space-between}}
+.seg{display:flex;gap:2px;padding:3px;background:var(--fill);border-radius:999px}
+.seg a{text-decoration:none;font-size:13px;font-weight:500;padding:6px 14px;border-radius:999px;color:var(--muted);transition:color .15s,background .15s,box-shadow .15s;white-space:nowrap}
+.seg a:hover{color:var(--ink)}
+.seg .on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.hdr-right{flex:1 1 0;display:flex;justify-content:flex-end;align-items:center;gap:10px}
+.askbtn{display:flex;align-items:center;gap:10px;height:36px;padding:0 8px 0 14px;border:1px solid var(--line-2);background:var(--card);border-radius:999px;font-size:13px;color:var(--muted);transition:border-color .15s,color .15s}
+.askbtn:hover{border-color:var(--ink);color:var(--ink)}
+.kbd{font-size:11px;border:1px solid var(--line-2);border-radius:6px;padding:1px 6px;color:var(--faint);font-family:inherit}
+.who{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 3px;border:1px solid var(--line-2);background:var(--card);border-radius:999px;font-size:13px;font-weight:500;color:var(--ink);max-width:240px;text-decoration:none;transition:border-color .15s}
+.who:hover{border-color:var(--ink)}
+.who-av{width:28px;height:28px;border-radius:999px;background:var(--ink);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;letter-spacing:.02em;flex-shrink:0}
+.who-av.f{background:var(--accent)}.who-av.demo{background:var(--fill);color:var(--muted)}
+.who-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.demo-badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:600;flex-shrink:0}
+@media (max-width:720px){.hdr-in{padding:0 14px;gap:8px}.askbtn,.who-t,.demo-badge{display:none}.who{padding:0 3px}.seg a{padding:6px 10px}}
+.brief{display:inline-flex;align-items:center;gap:8px;margin-top:26px;font-size:14px;color:var(--muted);text-decoration:none;padding:8px 14px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);transition:transform .15s var(--ease)}
+.brief::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.brief:hover{transform:translateY(-1px)}
+.setup{display:block;margin-top:18px;font-size:14px;color:var(--muted)}
+.dockin{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:10px;pointer-events:auto}
+.dockin .ask{flex:1;margin:0;max-width:none}
 .ghost{font-size:13px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);transition:border-color .15s,color .15s}
 .ghost:hover{border-color:var(--ink);color:var(--ink)}
 main{max-width:880px;margin:0 auto;padding:0 20px 140px}
@@ -126,17 +142,19 @@ td:first-child{font-weight:500}
 .sk{border-radius:10px;background:linear-gradient(90deg,var(--fill) 25%,#E8E8EB 50%,var(--fill) 75%);background-size:200% 100%;animation:sh 1.2s linear infinite}
 @keyframes sh{to{background-position:-200% 0}}
 .dock{position:fixed;left:0;right:0;bottom:0;padding:14px 20px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 62%,transparent);pointer-events:none}
-.dock .ask{max-width:720px;margin:0 auto;pointer-events:auto}
+
 .foot{margin-top:44px;font-size:12px;color:var(--faint);text-align:center}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header class="hdr"><a class="logo" href="#" id="home"><i></i>Perimeter</a>
-  <nav class="nav" aria-label="Main"><a class="on" href="/">Ask</a><a href="/app#/">Feed</a><a href="/app#/map">Map</a><a href="/app#/check">Check</a><a href="/app#/profile">Profile</a></nav>
-  <span class="side"><button class="ghost" id="new" hidden>New question</button></span></header>
+<header class="hdr"><div class="hdr-in">
+  <a class="logo" href="/" id="home" aria-label="Perimeter home"><i></i>Perimeter</a>
+  <nav class="seg" aria-label="Main"><a class="on" aria-current="page" href="/">Ask</a><a href="/app#/">Feed</a><a href="/app#/map">Map</a><a href="/app#/check">Check</a></nav>
+  <div class="hdr-right"><button type="button" class="askbtn" id="focusAsk">Ask anything <kbd class="kbd">Ctrl K</kbd></button><a class="who" id="who" href="/app#/profile" hidden></a></div>
+</div></header>
 <main id="app"></main>
-<div class="dock" id="dock" hidden><form class="ask"><input placeholder="Ask a follow-up" aria-label="Ask a follow-up" autocomplete="off"><button class="go">Ask</button></form></div>
+<div class="dock" id="dock" hidden><div class="dockin"><button class="ghost" id="new" hidden>New question</button><form class="ask"><input placeholder="Ask a follow-up" aria-label="Ask a follow-up" autocomplete="off"><button class="go">Ask</button></form></div></div>
 <script>
 // Old links such as /#/map pointed at the app when it lived on the front page.
 if (location.hash.startsWith('#/')) location.replace('/app' + location.hash);
@@ -147,7 +165,32 @@ const EXAMPLES = ['Does TCV back any rival of Qonto?', 'Who invested in Pennylan
 const history = [];   // {q, headline} of finished answers, sent as context for follow-ups
 let run = 0;          // bumps on every question so a superseded stream stops drawing
 let profile = null;   // who is asking (company, portfolio), when the app has a profile for this browser
-const profileReady = fetch('/api/profile').then(r => r.ok ? r.json() : null).then(p => { profile = p && (p.context || null); }).catch(() => {});
+const profileReady = fetch('/api/profile').then(r => r.ok ? r.json() : null).then(p => { me = p; profile = p && (p.context || null); paintWho(); if (atHome) home(); }).catch(() => {});
+let me = null, atHome = true, brief = null;
+fetch('/api/feed').then(r => r.ok ? r.json() : null).then(f => { brief = f && !f.building && f.items && f.items.length ? f.summary : null; if (atHome) home(); }).catch(() => {});
+
+// The same profile chip the app shows, so the top bar does not change between pages.
+function paintWho() {
+  const el = document.getElementById('who'), p = me && me.profile, demo = !me || me.viewing === 'demo' || !p;
+  const label = demo ? 'Demo portfolio' : p.name || (p.role === 'founder' ? p.my_company && p.my_company.name : p.fund_or_company_name) || (p.role === 'founder' ? 'Founder' : 'Investor');
+  const person = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
+  el.innerHTML = `<span class="who-av${demo ? ' demo' : p.role === 'founder' ? ' f' : ''}">${demo ? person : esc(initials(label))}</span><span class="who-t">${esc(label)}</span>${demo ? '<span class="demo-badge">Demo</span>' : ''}`;
+  el.setAttribute('aria-label', 'Profile: ' + label);
+  el.hidden = false;
+}
+
+// What the front page says depends on who is asking: Perimeter is about what surrounds *your* company.
+function pitch() {
+  const c = profile || {}, mine = !c.demo, rival = ((c.rivals || [])[0] || {}).name;
+  const co = typeof c.my_company === 'string' ? c.my_company : c.my_company && c.my_company.name;
+  if (mine && co) return { h: `Everything around ${co}. Just ask.`, p: `Perimeter watches ${co}'s rivals, investors and deals in Cala's knowledge graph.`,
+    qs: ['Which of my investors also back my rivals?', rival ? `Who funds ${rival}?` : 'Who are my closest rivals?', 'Which of my rivals raised money this year?', 'Which active investors back companies like mine, but none of my rivals?'] };
+  const names = (c.portfolio || []).map(x => x.name).filter(Boolean);
+  if (names.length) return { h: mine ? 'Everything around your portfolio. Just ask.' : 'Everything around your company. Just ask.',
+    p: `Perimeter watches the rivals, investors and deals around ${names.slice(0, 3).join(', ')}${names.length > 3 ? ' and more' : ''} in Cala's knowledge graph.`,
+    qs: [`Which investors in ${names[0]} also back its rivals?`, rival ? `What has ${rival} raised recently?` : `Who are ${names[0]}'s closest rivals?`, names[1] ? `Compare ${names[0]} and ${names[1]}` : `Who invested in ${names[0]}, and when?`, `Who co-invests most often around ${names[names.length - 1]}?`] };
+  return { h: 'Everything around your company. Just ask.', p: "Perimeter watches a company's rivals, investors and deals in Cala's knowledge graph.", qs: EXAMPLES };
+}
 
 /* ---------- widgets ---------- */
 const sources = w => w.sources && w.sources.length ? `<div class="srcs">${w.sources.map(s => `<a class="src" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.name)}">${esc(s.name)} ↗</a>`).join('')}</div>` : '';
@@ -168,17 +211,22 @@ const skeleton = () => `<div class="head"><div class="sk" style="height:34px;wid
 /* ---------- home ---------- */
 function home() {
   run++; history.length = 0; dock.hidden = true; newBtn.hidden = true;
-  $.innerHTML = `<div class="hero in"><h1>Ask anything about startups and who funds them.</h1>
-    <p>Every answer is built live from Cala's knowledge graph, with its sources.</p>
-    <form class="ask"><input placeholder="Does TCV back any rival of Qonto?" aria-label="Your question" autocomplete="off" autofocus><button class="go">Ask</button></form>
-    <div class="chips">${EXAMPLES.map(q => `<button class="chip" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div></div>`;
-  $.querySelector('input').focus();
+  const typed = atHome && $.querySelector('.hero input') ? $.querySelector('.hero input').value : '', first = !atHome || !$.querySelector('.hero');
+  atHome = true;
+  const t = pitch(), demo = !profile || profile.demo;
+  $.innerHTML = `<div class="hero ${first ? 'in' : ''}"><h1>${esc(t.h)}</h1>
+    <p>${esc(t.p)} Every answer comes with its sources.</p>
+    <form class="ask"><input placeholder="${esc(t.qs[0])}" aria-label="Your question" autocomplete="off"><button class="go">Ask</button></form>
+    <div class="chips">${t.qs.map(q => `<button class="chip" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    ${brief ? `<a class="brief" href="/app#/">${esc(brief)} See the feed →</a>` : ''}
+    ${me && demo ? '<a class="setup" href="/app#/welcome">This is a demo portfolio. Set up your own company →</a>' : ''}</div>`;
+  const input = $.querySelector('input'); input.value = typed; input.focus();
 }
 
 /* ---------- ask ---------- */
 async function ask(q) {
   q = q.trim(); if (!q) return;
-  const mine = ++run;
+  const mine = ++run; atHome = false;
   dock.hidden = false; newBtn.hidden = false; dock.querySelector('input').value = ''; dock.querySelector('.go').disabled = true;
   scrollTo({ top: 0 });
   $.innerHTML = `<div class="q in">${esc(q)}</div><div class="steps" id="steps"><i></i><span>Thinking</span></div><div id="board">${skeleton()}</div>`;
@@ -226,6 +274,9 @@ if (initialQ) profileReady.then(() => ask(initialQ));
 document.addEventListener('submit', e => { e.preventDefault(); const i = e.target.querySelector('input'); ask(i.value || (e.target.closest('.hero') ? i.placeholder : '')); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-ask]'); if (b) ask(b.dataset.ask); });
 newBtn.onclick = home;
+const focusAsk = () => { const i = dock.hidden ? $.querySelector('.hero input') : dock.querySelector('input'); if (i) i.focus(); };
+document.getElementById('focusAsk').onclick = focusAsk;
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); focusAsk(); } });
 document.getElementById('home').onclick = e => { e.preventDefault(); home(); };
 home();
 </script>
