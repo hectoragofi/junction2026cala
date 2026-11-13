@@ -27,6 +27,7 @@ log = logging.getLogger("perimeter")
 
 WEB_DIR = PERIMETER_DIR / "web"
 STATE_FILE = CACHE_DIR / "state.json"
+PROFILES_DIR = CACHE_DIR / "profiles"
 
 # Real companies Cala knows well, chosen for overlapping investors, M&A and recent rounds.
 DEMO_PORTFOLIO = [
@@ -35,23 +36,154 @@ DEMO_PORTFOLIO = [
     "416166a8-95e7-4cd6-baad-3208cb8d4299",  # Pennylane (Paris accounting)
     "11267552-e210-40ec-aafd-526c205f6225",  # Pigment (Paris planning software)
 ]
-
-STATE: dict = {"portfolio": [], "portfolio_ids": [], "built": None, "built_at": None}
-BUILD: dict = {"task": None, "progress": None, "error": None, "partial": None}
-
-
-def load_state():
-    if STATE_FILE.exists():
-        try:
-            STATE.update(json.loads(STATE_FILE.read_text(encoding="utf-8")))
-        except Exception as e:
-            log.warning("state load failed: %s", e)
+DEMO_PID = "demo"
+PID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+BUILD_SLOTS = max(1, int(os.environ.get("BUILD_SLOTS", "2") or 2))
+_BUILD_SEM: asyncio.Semaphore | None = None
+QUEUE: list[str] = []  # pids waiting for a build slot, in order
 
 
-def save_state():
-    tmp = STATE_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps(STATE, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(STATE_FILE)
+def _sem() -> asyncio.Semaphore:
+    global _BUILD_SEM
+    if _BUILD_SEM is None:
+        _BUILD_SEM = asyncio.Semaphore(BUILD_SLOTS)
+    return _BUILD_SEM
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _write_json(path: Path, data: dict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(path)
+
+
+class Space:
+    """One perimeter: the shared demo (pid "demo", state.json) or a visitor's own profile."""
+
+    def __init__(self, pid: str):
+        self.pid = pid
+        self.state: dict = {"portfolio": [], "portfolio_ids": [], "built": None, "built_at": None}
+        self.build: dict = {"task": None, "progress": None, "error": None, "partial": None}
+        self.profile: dict | None = None  # None for the demo
+
+    @property
+    def demo(self) -> bool:
+        return self.pid == DEMO_PID
+
+    @property
+    def state_file(self) -> Path:
+        return STATE_FILE if self.demo else PROFILES_DIR / f"{self.pid}.state.json"
+
+    @property
+    def profile_file(self) -> Path:
+        return PROFILES_DIR / f"{self.pid}.json"
+
+    @property
+    def role(self) -> str:
+        return (self.profile or {}).get("role") or "investor"
+
+    def load(self):
+        if not self.demo and self.profile_file.exists():
+            self.profile = json.loads(self.profile_file.read_text(encoding="utf-8"))
+            self.state["portfolio_ids"] = self.profile.get("portfolio_ids") or []
+            self.state["portfolio"] = self.profile.get("portfolio") or []
+        if self.state_file.exists():
+            try:
+                st = json.loads(self.state_file.read_text(encoding="utf-8"))
+                if self.demo:
+                    self.state.update(st)
+                else:
+                    self.state.update(built=st.get("built"), built_at=st.get("built_at"))
+            except Exception as e:
+                log.warning("state load failed (%s): %s", self.pid, e)
+
+    def save_state(self):
+        if self.demo:
+            _write_json(self.state_file, self.state)
+        else:
+            _write_json(self.state_file, {"built": self.state.get("built"), "built_at": self.state.get("built_at")})
+
+    def save_profile(self):
+        if self.demo or self.profile is None:
+            return
+        self.profile.update(portfolio_ids=self.state.get("portfolio_ids") or [],
+                            portfolio=self.state.get("portfolio") or [], updated_at=_now())
+        _write_json(self.profile_file, self.profile)
+
+    def building(self) -> bool:
+        t = self.build.get("task")
+        return bool(t and not t.done())
+
+    def partial(self) -> dict | None:
+        """While a new portfolio's first build runs (no finished build yet), what has landed so far."""
+        if self.state.get("built") or not self.building():
+            return None
+        return self.build.get("partial")
+
+    def queued(self) -> int | None:
+        return QUEUE.index(self.pid) + 1 if self.pid in QUEUE else None
+
+    def start_build(self):
+        self.cancel_build()
+        self.build["task"] = asyncio.create_task(_build(self, list(self.state.get("portfolio_ids") or [])))
+
+    def cancel_build(self):
+        t = self.build.get("task")
+        if t and not t.done():
+            t.cancel()
+
+
+SPACES: dict[str, Space] = {}
+
+
+def demo_space() -> Space:
+    s = SPACES.get(DEMO_PID)
+    if not s:
+        s = SPACES[DEMO_PID] = Space(DEMO_PID)
+        s.load()
+    return s
+
+
+def get_space(pid: str | None) -> Space | None:
+    """A visitor's own profile space, loaded from disk on first use (None when it doesn't exist)."""
+    if not pid or pid == DEMO_PID or not PID_RE.match(pid):
+        return None
+    s = SPACES.get(pid)
+    if s:
+        return s
+    s = Space(pid)
+    if not s.profile_file.exists():
+        return None
+    try:
+        s.load()
+    except Exception as e:
+        log.warning("profile load failed (%s): %s", pid, e)
+        return None
+    SPACES[pid] = s
+    if s.state.get("portfolio_ids") and not s.state.get("built"):
+        s.start_build()  # resume a build interrupted by a restart
+    return s
+
+
+def _identity(request: Request) -> str | None:
+    """The visitor's own profile id: X-Profile header, ?pid= (EventSource), or the pid cookie."""
+    pid = (request.headers.get("x-profile") or request.query_params.get("pid") or request.cookies.get("pid") or "").strip()
+    return pid if pid == DEMO_PID or PID_RE.match(pid) else None
+
+
+def _viewing_demo(request: Request) -> bool:
+    return (request.headers.get("x-view") or request.query_params.get("view") or "") == "demo"
+
+
+def active(request: Request) -> Space:
+    """The space a data request reads: the visitor's own profile, or the shared demo (no profile / "Explore")."""
+    if _viewing_demo(request):
+        return demo_space()
+    return get_space(_identity(request)) or demo_space()
 
 
 async def _company_card(eid: str) -> dict | None:
@@ -62,47 +194,48 @@ async def _company_card(eid: str) -> dict | None:
     return {k: c.get(k) for k in ("id", "name", "description", "website", "hq", "founded")}
 
 
-async def _build(ids: list[str]):
-    BUILD["error"] = None
-    BUILD["partial"] = None
+async def _build(space: Space, ids: list[str]):
+    b = space.build
+    b.update(error=None, partial=None, progress=None)
 
     def progress(msg, partial=None):
-        BUILD["progress"] = msg
+        b["progress"] = msg
         if partial is not None:
-            BUILD["partial"] = partial
+            b["partial"] = partial
+    QUEUE.append(space.pid)
     try:
-        res = await build(ids, progress=progress)
-        STATE["built"] = res
-        STATE["built_at"] = res["built_at"]
-        if res.get("portfolio"):
-            STATE["portfolio"] = res["portfolio"]
-        save_state()
-        log.info("perimeter built in %ss", res.get("build_seconds"))
+        async with _sem():  # cold builds hit Cala hard (~20 calls/min): only BUILD_SLOTS at a time
+            QUEUE.remove(space.pid)
+            res = await build(ids, progress=progress)
+            space.state["built"] = res
+            space.state["built_at"] = res["built_at"]
+            if res.get("portfolio"):
+                space.state["portfolio"] = res["portfolio"]
+            space.save_state()
+            if space.profile is not None:
+                if space.role == "founder":
+                    cos = (res.get("perimeter") or {}).get("companies") or []
+                    space.profile["watch_rivals"] = [{"id": r["id"], "name": r["name"]}
+                                                     for r in ((cos[0].get("rivals") if cos else None) or [])]
+                space.save_profile()
+            log.info("perimeter %s built in %ss", space.pid, res.get("build_seconds"))
+    except asyncio.CancelledError:
+        raise
     except Exception as e:  # keep the previous build
-        log.exception("build failed")
-        BUILD["error"] = str(e)
+        log.exception("build failed (%s)", space.pid)
+        b["error"] = str(e)
     finally:
-        BUILD["progress"] = None
-        BUILD["partial"] = None
-
-
-def start_build(ids: list[str]):
-    t = BUILD.get("task")
-    if t and not t.done():
-        t.cancel()
-    BUILD["task"] = asyncio.create_task(_build(ids))
-
-
-def building() -> bool:
-    t = BUILD.get("task")
-    return bool(t and not t.done())
+        if space.pid in QUEUE:
+            QUEUE.remove(space.pid)
+        b["progress"] = None
+        b["partial"] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    load_state()
-    if STATE.get("portfolio_ids") and not STATE.get("built"):
-        start_build(STATE["portfolio_ids"])
+    d = demo_space()
+    if d.state.get("portfolio_ids") and not d.state.get("built"):
+        d.start_build()
     yield
     await cala.close()
 
@@ -150,18 +283,13 @@ async def resolve(body: ResolveIn):
 
 
 @app.get("/api/portfolio")
-async def get_portfolio():
-    part = _partial()
-    return {"companies": STATE.get("portfolio") or [], "building": building(), "built_at": STATE.get("built_at"),
-            "progress": BUILD.get("progress"), "error": BUILD.get("error"),
+async def get_portfolio(request: Request):
+    s = active(request)
+    part = s.partial()
+    return {"companies": s.state.get("portfolio") or [], "building": s.building(), "built_at": s.state.get("built_at"),
+            "progress": s.build.get("progress"), "error": s.build.get("error"),
+            **({"queued": s.queued()} if s.queued() else {}),
             **({"status": part["status"]} if part else {})}
-
-
-def _partial() -> dict | None:
-    """While a new portfolio's first build runs (no finished build yet), what has landed so far."""
-    if STATE.get("built") or not building():
-        return None
-    return BUILD.get("partial")
 
 
 class PortfolioIn(BaseModel):
@@ -173,38 +301,174 @@ ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
 
 def _locked(request: Request) -> bool:
-    """With DEMO_LOCK=1 public visitors cannot replace or rebuild the shared portfolio."""
+    """With DEMO_LOCK=1 public visitors cannot replace or rebuild the shared demo portfolio."""
     return DEMO_LOCK and not (ADMIN_TOKEN and request.headers.get("x-admin-token") == ADMIN_TOKEN)
+
+
+def _clean_ids(ids: list[str] | None) -> list[str]:
+    return list(dict.fromkeys(i.strip() for i in ids or [] if i and i.strip()))[:12]
+
+
+async def _set_ids(s: Space, ids: list[str]):
+    """Replace a space's companies and start a fresh build (no-op when unchanged and already built)."""
+    if ids == (s.state.get("portfolio_ids") or []) and (s.state.get("built") or s.building()):
+        return
+    if not ids:
+        s.cancel_build()
+        s.state.update({"portfolio_ids": [], "portfolio": [], "built": None, "built_at": None})
+        s.save_state()
+        return
+    cards = [c for c in await asyncio.gather(*[_company_card(i) for i in ids]) if c]
+    if not cards:
+        raise HTTPException(404, "Cala has none of those companies")
+    s.state.update({"portfolio_ids": [c["id"] for c in cards], "portfolio": cards, "built": None, "built_at": None})
+    s.save_state()
+    s.start_build()
 
 
 @app.post("/api/portfolio")
 async def set_portfolio(body: PortfolioIn, request: Request):
-    ids = list(dict.fromkeys(i for i in body.ids if i))[:12]
+    ids = _clean_ids(body.ids)
     if not ids:
         raise HTTPException(400, "ids required")
-    if ids != DEMO_PORTFOLIO and _locked(request):
-        raise HTTPException(403, "This public demo is locked to the sample portfolio. Use Check to look up any company.")
-    cards = [c for c in await asyncio.gather(*[_company_card(i) for i in ids]) if c]
-    STATE.update({"portfolio_ids": ids, "portfolio": cards, "built": None, "built_at": None})
-    save_state()
-    start_build(ids)
+    s = active(request)
+    if s.demo:
+        if ids != DEMO_PORTFOLIO and _locked(request):
+            raise HTTPException(403, "The shared demo is locked. Make your own profile to watch your companies.")
+    elif s.role == "founder":
+        ids = ids[:1]
+    await _set_ids(s, ids)
+    if s.profile is not None:
+        if s.role == "founder":
+            s.profile["my_company"] = (s.state.get("portfolio") or [None])[0]
+        s.save_profile()
     return {"ok": True}
 
 
 @app.post("/api/portfolio/demo")
 async def demo_portfolio(request: Request):
-    if STATE.get("portfolio_ids") == DEMO_PORTFOLIO and STATE.get("built"):
+    d = demo_space()
+    if d.state.get("portfolio_ids") == DEMO_PORTFOLIO and (d.state.get("built") or d.building()):
         return {"ok": True}
-    return await set_portfolio(PortfolioIn(ids=DEMO_PORTFOLIO), request)
+    await _set_ids(d, DEMO_PORTFOLIO)
+    return {"ok": True}
 
 
 @app.post("/api/rebuild")
 async def rebuild(request: Request):
-    if _locked(request) and STATE.get("built"):
-        raise HTTPException(403, "Rebuild is disabled on the public demo.")
-    if not STATE.get("portfolio_ids"):
+    s = active(request)
+    if s.demo and _locked(request) and s.state.get("built"):
+        raise HTTPException(403, "Rebuild is disabled on the shared demo.")
+    if not s.state.get("portfolio_ids"):
         raise HTTPException(400, "no portfolio")
-    start_build(STATE["portfolio_ids"])
+    s.start_build()
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------- profiles
+def _context(s: Space) -> dict:
+    """Compact, cheap summary of what this profile watches (read by other agents/workstreams)."""
+    port = [{"id": c["id"], "name": c["name"]} for c in s.state.get("portfolio") or []]
+    rivals = []
+    b = s.state.get("built")
+    if b:
+        seen = set()
+        for c in (b.get("perimeter") or {}).get("companies") or []:
+            for r in c.get("rivals") or []:
+                if r.get("id") not in seen:
+                    seen.add(r.get("id"))
+                    rivals.append({"id": r["id"], "name": r["name"]})
+    role = "investor" if s.demo else s.role
+    mc = (s.profile or {}).get("my_company") if role == "founder" else None
+    return {"role": role, "demo": s.demo,
+            "my_company": {"id": mc["id"], "name": mc["name"]} if mc else None,
+            "portfolio": port, "rivals": rivals[:24], "built_at": s.state.get("built_at")}
+
+
+def _profile_out(p: dict | None) -> dict | None:
+    if p is None:
+        return None
+    return {k: p.get(k) for k in ("role", "name", "fund_or_company_name", "my_company", "portfolio_ids", "portfolio",
+                                  "watch_rivals", "created_at", "updated_at")}
+
+
+@app.get("/api/profile")
+async def get_profile(request: Request):
+    pid = _identity(request)
+    own = get_space(pid)
+    view = active(request)
+    return {"pid": pid, "exists": own is not None, "viewing": "demo" if view.demo else "me",
+            "demo_locked": _locked(request), "profile": _profile_out(own.profile) if own else None,
+            "context": _context(view)}
+
+
+class ProfileIn(BaseModel):
+    role: str | None = None                  # "founder" | "investor"
+    name: str | None = None
+    fund_or_company_name: str | None = None
+    my_company_id: str | None = None         # founder: their own company
+    portfolio_ids: list[str] | None = None   # investor: the companies they watch
+    watch_rivals: list[dict] | None = None
+
+
+@app.put("/api/profile")
+async def put_profile(body: ProfileIn, request: Request):
+    pid = _identity(request)
+    if not pid:
+        raise HTTPException(400, "Send your profile id in the X-Profile header (or the pid cookie).")
+    if body.role is not None and body.role not in ("founder", "investor"):
+        raise HTTPException(400, "role must be founder or investor")
+    if pid == DEMO_PID:  # the shared demo has no profile, only its portfolio
+        if _locked(request):
+            raise HTTPException(403, "The shared demo is locked. Make your own profile to change companies.")
+        if body.portfolio_ids is not None:
+            await _set_ids(demo_space(), _clean_ids(body.portfolio_ids))
+        return await get_profile(request)
+    s = get_space(pid)
+    if s is None:
+        s = Space(pid)
+        s.profile = {"role": body.role or "investor", "created_at": _now(), "watch_rivals": []}
+        SPACES[pid] = s
+    p = s.profile
+    old_role = p.get("role")
+    for k in ("role", "name", "fund_or_company_name"):
+        v = getattr(body, k)
+        if v is not None:
+            p[k] = v.strip()[:80] if isinstance(v, str) else v
+    if body.watch_rivals is not None:
+        p["watch_rivals"] = body.watch_rivals[:24]
+    cur = s.state.get("portfolio_ids") or []
+    ids = None
+    if p["role"] == "founder":
+        if body.my_company_id:
+            ids = [body.my_company_id.strip()]
+        elif body.portfolio_ids is not None:
+            ids = _clean_ids(body.portfolio_ids)[:1]
+        elif old_role != "founder" and len(cur) > 1:
+            ids = cur[:1]  # switching seat: keep the first company as "mine"
+    elif body.portfolio_ids is not None:
+        ids = _clean_ids(body.portfolio_ids)
+    if ids is not None:
+        await _set_ids(s, ids)
+    if p["role"] == "founder":
+        p["my_company"] = (s.state.get("portfolio") or [None])[0]
+    else:
+        p.pop("my_company", None)
+    s.save_profile()
+    return await get_profile(request)
+
+
+@app.post("/api/profile/reset")
+async def reset_profile(request: Request):
+    pid = _identity(request)
+    if not pid or pid == DEMO_PID:
+        raise HTTPException(400, "Nothing to reset")
+    s = get_space(pid)
+    if s:
+        s.cancel_build()
+        SPACES.pop(pid, None)
+        for f in (s.profile_file, s.state_file):
+            f.unlink(missing_ok=True)
     return {"ok": True}
 
 
@@ -214,27 +478,28 @@ def _empty_perimeter():
 
 
 @app.get("/api/perimeter")
-async def perimeter():
-    b = STATE.get("built")
+async def perimeter(request: Request):
+    s = active(request)
+    b = s.state.get("built")
     if not b:
-        part = _partial()
+        part = s.partial()
         if part:
             return {**part["perimeter"], "building": True, "status": part["status"], "partial": True}
-        return {**_empty_perimeter(), "building": building()}
-    return {**b["perimeter"], "building": building(), "built_at": STATE.get("built_at")}
+        return {**_empty_perimeter(), "building": s.building()}
+    return {**b["perimeter"], "building": s.building(), "built_at": s.state.get("built_at")}
 
 
 @app.get("/api/feed")
-async def feed():
-    b = STATE.get("built")
-    if not b and _partial():
-        part = _partial()
+async def feed(request: Request):
+    s = active(request)
+    b = s.state.get("built")
+    part = s.partial()
+    if not b and part:
         return {**part["feed"], "building": True, "status": part["status"], "partial": True}
     if not b:
-        n = len(STATE.get("portfolio") or [])
-        return {"summary": "Mapping your perimeter…" if building() else "Add companies to start watching.",
-                "items": [], "building": building()}
-    return {**b["feed"], "building": building(), "built_at": STATE.get("built_at")}
+        return {"summary": "Mapping your perimeter…" if s.building() else "Add companies to start watching.",
+                "items": [], "building": s.building()}
+    return {**b["feed"], "building": s.building(), "built_at": s.state.get("built_at")}
 
 
 def _sse(event: str, data: dict) -> str:
@@ -243,8 +508,9 @@ def _sse(event: str, data: dict) -> str:
 
 @app.get("/api/check/stream")
 async def check_stream(q: str, request: Request):
-    pids = set(STATE.get("portfolio_ids") or [])
-    pnames = [c["name"] for c in STATE.get("portfolio") or []]
+    s = active(request)
+    pids = set(s.state.get("portfolio_ids") or [])
+    pnames = [c["name"] for c in s.state.get("portfolio") or []]
 
     async def gen():
         try:
@@ -287,40 +553,42 @@ def ask_payload(res: dict) -> dict:
 
 
 @app.post("/api/ask")
-async def ask(body: AskIn):
+async def ask(body: AskIn, request: Request):
+    s = active(request)
     q = (body.q or "").strip()
     if not q:
         raise HTTPException(400, "q required")
     t0 = time.monotonic()
-    local = _local_answer(q)
+    local = _local_answer(q, s)
     if local:
         return {**local, "seconds": round(time.monotonic() - t0, 1)}
     try:
-        res = await cala.ksearch(_with_portfolio(q))
+        res = await cala.ksearch(_with_portfolio(q, s))
     except Exception as e:
         raise HTTPException(502, f"Cala: {e}")
     return {**ask_payload(res), "seconds": round(time.monotonic() - t0, 1)}
 
 
-_MY = re.compile(r"\b(my|our) (portfolio( companies)?|companies|bets|investments)\b", re.I)
+_MY = re.compile(r"\b(my|our) (portfolio( companies)?|companies|company|startup|bets|investments)\b", re.I)
 
 
-def _with_portfolio(q: str) -> str:
+def _with_portfolio(q: str, s: Space) -> str:
     """Cala doesn't know the user's portfolio: name it when the question refers to it."""
-    names = [c["name"] for c in STATE.get("portfolio") or []]
+    names = [c["name"] for c in s.state.get("portfolio") or []]
     if not names or not (_MY.search(q) or re.search(r"\b(rivals?|competitors?)\b", q, re.I)):
         return q
     q2 = _MY.sub(", ".join(names), q)
-    rivals = (STATE.get("built") or {}).get("rivals_index") or {}
-    ctx = f" (Portfolio companies: {', '.join(names)}"
+    rivals = (s.state.get("built") or {}).get("rivals_index") or {}
+    label = "My company" if (not s.demo and s.role == "founder") else "Portfolio companies"
+    ctx = f" ({label}: {', '.join(names)}"
     if rivals:
         ctx += "; their closest rivals: " + ", ".join(v["name"] for v in list(rivals.values())[:16])
     return q2 + ctx + ")"
 
 
-def _local_answer(q: str) -> dict | None:
+def _local_answer(q: str, s: Space) -> dict | None:
     """Overlap questions are answered from the built perimeter (Cala facts, already sourced), instantly."""
-    b = STATE.get("built")
+    b = s.state.get("built")
     if not b:
         return None
     ql = q.lower()
@@ -448,8 +716,8 @@ async def _polish(note: dict, it: dict) -> dict:
 
 
 @app.post("/api/draft")
-async def draft(body: DraftIn):
-    b = STATE.get("built") or {}
+async def draft(body: DraftIn, request: Request):
+    b = active(request).state.get("built") or {}
     it = next((i for i in (b.get("feed") or {}).get("items", []) if i["id"] == body.item_id), None)
     if not it:
         raise HTTPException(404, "item not found")
