@@ -31,8 +31,10 @@ TODAY = date.today()
 # --------------------------------------------------------------------------- utils
 def src(s: dict) -> dict:
     url = s.get("document") or s.get("url") or None
-    return {"name": (s.get("name") or (url or "Cala")).strip()[:160], "url": url or None,
-            "date": (s.get("date") or None)}
+    d = s.get("date") or None
+    if d and (d[:4] < "2005" or d[:4] > str(TODAY.year)):
+        d = None  # placeholder dates like 2000-01-01 carry no information
+    return {"name": (s.get("name") or (url or "Cala")).strip()[:160], "url": url or None, "date": d}
 
 
 def merge_sources(*lists: list[dict], cap: int = 6) -> list[dict]:
@@ -97,7 +99,7 @@ def clean_name(name: str) -> str:
         return m.group(1).strip()
     n = re.sub(r"\s*\(.*?\)\s*", " ", n).strip()
     n = re.sub(r"\s+affiliated investment funds?$", "", n, flags=re.I)
-    if n.isupper() and len(n) > 4:
+    if n.isupper() and len(n.replace(" ", "")) > 4:
         words = []
         for w in n.split():
             lw = w.lower().strip(".,")
@@ -136,10 +138,10 @@ def fmt_amount(value: Any, units: str | None) -> str | None:
         return None
     u = (units or "").strip()
     mult = 1.0
-    if re.search(r"bn|billion", u, re.I):
-        mult, u = 1e9, re.sub(r"\s*(bn|billion)\s*", " ", u, flags=re.I).strip()
-    elif re.search(r"m|mn|million", u, re.I):
-        mult, u = 1e6, re.sub(r"\s*(mn|m|million)\s*", " ", u, flags=re.I).strip()
+    if re.search(r"\bbn\b|billion", u, re.I):
+        mult, u = 1e9, re.sub(r"\s*\b(billion|bn)\b\s*", " ", u, flags=re.I).strip()
+    elif re.search(r"\bm\b|\bmn\b|million", u, re.I):
+        mult, u = 1e6, re.sub(r"\s*\b(million|mn|m)\b\s*", " ", u, flags=re.I).strip()
     elif v < 10000:
         mult = 1e6  # Cala sometimes stores deal values in millions without saying so
     v *= mult
@@ -180,12 +182,28 @@ def _edge(x: dict) -> dict:
             "sources": [src(s) for s in p.get("sources") or []]}
 
 
+# Superset used when no introspection is cached: Cala ignores unknown properties/relationships, so one
+# retrieval replaces introspection + retrieval (Cala rate-limits at roughly 20 calls/minute).
+_ROLE_RELS = ["FOUNDED", "WORKS_AT", "IS_CEO_OF", "IS_CTO_OF", "IS_COO_OF", "IS_CFO_OF", "IS_CCO_OF",
+              "IS_BOARD_MEMBER_OF", "IS_EXECUTIVE_OF", "IS_CHAIRMAN_OF", "IS_PRESIDENT_OF", "IS_MEMBER_OF",
+              "IS_CONTROL_PERSON_OF", "IS_BENEFICIARY_OWNER_OF", "INVESTED_IN"]
+SUPER_PROPS = ["name", "legal_name", "aliases", "website", "lei", "description", "registered_address",
+               "headquarters_address", "founding_date", "birth_date"]
+SUPER_OUT = ["IS_REGISTERED_IN", "HAS_HEADQUARTERS_IN", "OPERATES_IN_INDUSTRY", "PARTICIPATES_IN_CORPORATE_EVENT",
+             "HAS_PRESENCE_IN", "IS_DIRECT_PARENT_OF", "IS_ULTIMATE_PARENT_OF", "LISTED_ON", "HAS_NATIONALITY",
+             *_ROLE_RELS]
+SUPER_IN = [*_ROLE_RELS, "IS_DIRECT_PARENT_OF", "IS_ULTIMATE_PARENT_OF", "PARTICIPATES_IN_CORPORATE_EVENT"]
+
+
 async def fetch_entity(eid: str, limit: int = 30) -> dict:
-    intro = await cala.introspect(eid)
-    props = [p for p in intro.get("properties") or [] if p != "id"]
-    rels = intro.get("relationships") or {}
-    out_rels = {k: limit for k in rels.get("outgoing") or []}
-    in_rels = {k: limit for k in rels.get("incoming") or []}
+    intro = cala.cached("entity_introspection", {"entity_id": eid})
+    if intro is not None:
+        props = [p for p in intro.get("properties") or [] if p != "id"]
+        rels = intro.get("relationships") or {}
+        out_rels = {k: limit for k in rels.get("outgoing") or []}
+        in_rels = {k: limit for k in rels.get("incoming") or []}
+    else:
+        props, out_rels, in_rels = SUPER_PROPS, {k: limit for k in SUPER_OUT}, {k: limit for k in SUPER_IN}
     r = await cala.retrieve(eid, props, out_rels or None, in_rels or None)
     ent = {
         "id": r.get("id") or eid, "name": r.get("name") or "", "type": r.get("entity_type") or "Entity",
@@ -193,7 +211,7 @@ async def fetch_entity(eid: str, limit: int = 30) -> dict:
         "props": {}, "out": {}, "inc": {},
     }
     for k, v in (r.get("properties") or {}).items():
-        if isinstance(v, dict) and "value" in v:
+        if isinstance(v, dict) and "value" in v and v["value"] not in (None, "", []):
             ent["props"][k] = {"value": v["value"], "sources": [src(s) for s in v.get("sources") or []]}
     for d, key in (("outgoing", "out"), ("incoming", "inc")):
         for rel, lst in ((r.get("relationships") or {}).get(d) or {}).items():
@@ -257,7 +275,10 @@ async def richness(eid: str) -> int:
     except Exception:
         return -1
     rels = intro.get("relationships") or {}
-    return len(intro.get("properties") or []) + 2 * (len(rels.get("outgoing") or []) + len(rels.get("incoming") or []))
+    out, inc = rels.get("outgoing") or [], rels.get("incoming") or []
+    score = len(intro.get("properties") or []) + 2 * (len(out) + len(inc))
+    score += 6 * ("PARTICIPATES_IN_CORPORATE_EVENT" in out) + 4 * ("INVESTED_IN" in inc) + 3 * ("FOUNDED" in inc)
+    return score
 
 
 async def search_companies(name: str) -> list[dict]:
@@ -283,12 +304,10 @@ async def resolve_company(name: str, hint_ids: list[str] | None = None) -> tuple
     Cala's own entity link (hint_ids, from knowledge_query) wins. Otherwise exact normalised-name matches are
     preferred, and among those the richest record (most properties/relationships) is chosen.
     """
+    if hint_ids:  # Cala already linked the name to an entity: trust it, no extra calls
+        return {"id": hint_ids[0], "name": name}, [], 0.95
     cands = await search_companies(name)
     scored = sorted(((similarity(name, c.get("name", "")), c) for c in cands), key=lambda t: -t[0])
-    if hint_ids:
-        h = hint_ids[0]
-        best = next((c for _, c in scored if c["id"] == h), {"id": h, "name": name})
-        return best, [c for _, c in scored[:5]], 0.95
     exact = [c for s, c in scored if s >= 0.999][:4]
     top = exact or [c for s, c in scored if s >= 0.75][:2]
     if not top:
@@ -389,7 +408,7 @@ def people_of(ent: dict) -> list[dict]:
         for e in lst:
             if e["type"] != "Person" or rel == "INVESTED_IN":
                 continue
-            p = by_id.setdefault(e["id"], {"id": e["id"], "name": e["name"], "roles": [], "rels": set(),
+            p = by_id.setdefault(e["id"], {"id": e["id"], "name": clean_name(e["name"]), "roles": [], "rels": set(),
                                            "sources": []})
             role = e.get("role") if rel in ("WORKS_AT", "IS_MEMBER_OF") and e.get("role") else ROLE_BY_REL.get(
                 rel, rel.replace("IS_", "").replace("_OF", "").replace("_", " ").title())
@@ -560,67 +579,114 @@ def screen_query(name: str, hint: str | None = None) -> str:
     return f"Adverse news, regulatory actions, fines, lawsuits, investigations or sanctions involving {who} since 2025"
 
 
+NEG_RE = re.compile(r"\bno (other |further |additional |major |specific |known |public |confirmed )*"
+                    r"(adverse|sanction|lawsuit|regulatory|record|evidence|fine|enforcement|investigation|litigation"
+                    r"|legal|reports?|news|issues?|findings?)|not (been )?(mentioned|identified|found|reported)"
+                    r"|none (were |was )?(found|identified)", re.I)
+_MONEY = re.compile(r"(£|€|\$)\s?[\d.,]+\s?(million|billion|bn|m|k)?", re.I)
+
+
+def _ks_sources(refs: list[dict]) -> list[dict]:
+    out = []
+    for k in refs:
+        for o in k.get("origins") or []:
+            d = o.get("document") or {}
+            s = o.get("source") or {}
+            out.append({"name": d.get("name") or s.get("name") or "Source", "url": d.get("url") or s.get("url"),
+                        "date": None})
+    return merge_sources(out, cap=4)
+
+
+def _words(t: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9€£$]{4,}", strip_accents(t.lower()))}
+
+
+def _severity(cat: str, text: str) -> str:
+    lt = text.lower()
+    sev = {"sanctions": "high", "regulatory": "medium", "legal": "medium", "news": "low"}[cat]
+    if cat == "legal" and any(w in lt for w in ("fraud", "criminal", "indict", "charged")):
+        sev = "high"
+    if cat == "regulatory" and re.search(r"(£|€|\$)\s?\d[\d.,]*\s?(million|billion|bn|m)\b", lt):
+        sev = "high"
+    return sev
+
+
 def parse_screen(res: dict, name: str) -> dict:
-    """Conservative parse of a knowledge_search screening answer into findings."""
+    """Conservative parse of a knowledge_search screening answer into findings.
+
+    Prefers the answer's numbered sections ("### 1. Lithuania — EUR 3.5m AML fine"), each backed by the
+    explainability steps that talk about it; falls back to the steps themselves. Anything phrased as a
+    negative ("no other fines…"), not about the company, or without a source is dropped.
+    """
     content = (res or {}).get("content") or ""
     ctx = {k["id"]: k for k in (res or {}).get("context") or [] if k.get("id")}
-    steps = (res or {}).get("explainability") or []
-    heads = re.findall(r"^#{2,4}\s*\d+\.\s*(.+)$", content, flags=re.M)
-    first = norm_tokens(name)[:1]
+    steps = [st for st in (res or {}).get("explainability") or [] if st.get("content")]
+    first = (norm_tokens(name) or [""])[0]
+    cands = []  # (title, body, refs)
+    secs = re.split(r"^#{2,4}\s*\d+\.\s*", content, flags=re.M)[1:]
+    if secs:
+        for sec in secs:
+            title, _, body = sec.partition("\n")
+            body = re.split(r"^#{1,4}\s", body, flags=re.M)[0]
+            body = re.sub(r"\*+|^[-*]\s+", "", body, flags=re.M).strip()
+            title = re.sub(r"\*+", "", title).strip()
+            if NEG_RE.search(title) or title.lower().startswith("no "):
+                continue
+            tw = _words(title + " " + body[:600])
+            tm = {m.group(0).replace(" ", "") for m in _MONEY.finditer(title + " " + body)}
+            refs = []
+            for st in steps:
+                sm = {m.group(0).replace(" ", "") for m in _MONEY.finditer(st["content"])}
+                ov = len(_words(st["content"]) & tw)
+                if (tm & sm) or ov >= 6:
+                    refs += [ctx[r] for r in st.get("references") or [] if r in ctx]
+            if not refs and len(secs) == 1:
+                refs = [ctx[r] for st in steps for r in st.get("references") or [] if r in ctx]
+            sents = re.split(r"(?<=[.!?])\s+", body.replace("\n", " "))
+            cands.append((title, " ".join(sents[:3]).strip(), refs))
+    elif not NEG_RE.search(content[:900]):
+        seen_money: set[str] = set()
+        for st in steps:
+            body = st["content"].strip()
+            money = {m.group(0).replace(" ", "") for m in _MONEY.finditer(body)}
+            if money and money & seen_money:
+                continue
+            seen_money |= money
+            cands.append((_short_title(body), body, [ctx[r] for r in st.get("references") or [] if r in ctx]))
+
     findings = []
-    low_content = content.lower()
-    nothing = any(n in low_content[:600] for n in NEGATIONS) and not heads
-    for i, st in enumerate(steps):
-        body = (st.get("content") or "").strip()
-        lb = body.lower()
-        if not body or any(n in lb for n in NEGATIONS):
+    for title, body, refs in cands:
+        text = f"{title}. {body}"
+        lt = strip_accents(text.lower())
+        if NEG_RE.search(title) or (not secs and re.search(r"\b(no|not|without|only positive)\b", body, re.I)):
             continue
-        if first and first[0] not in strip_accents(lb):
+        if first and first not in lt:
             continue
-        cat = _classify(body)
+        cat = _classify(title) or _classify(text)
         if not cat:
             continue
-        refs = [ctx[r] for r in st.get("references") or [] if r in ctx]
-        sources = []
-        for k in refs:
-            for o in k.get("origins") or []:
-                d = o.get("document") or {}
-                s = o.get("source") or {}
-                sources.append({"name": d.get("name") or s.get("name") or "Source",
-                                "url": d.get("url") or s.get("url"), "date": None})
-        sources = merge_sources(sources, cap=4)
+        sources = _ks_sources(refs)
         if not sources:
             continue  # unsourced claims are dropped
-        title = heads[i] if len(heads) == len(steps) else _short_title(body)
-        title = re.sub(r"\*+", "", title).strip()
-        when = extract_date(title) or extract_date(body) or extract_date(" ".join(k.get("content", "")[:400]
-                                                                                for k in refs[:1]))
-        sev = {"sanctions": "high", "regulatory": "medium", "legal": "medium", "news": "low"}[cat]
-        if cat == "legal" and any(w in lb for w in ("fraud", "criminal", "indict", "charged")):
-            sev = "high"
-        if cat == "regulatory" and re.search(r"(£|€|\$)\s?\d{2,}\s?(m|million|bn|billion)", lb):
-            sev = "high"
+        when = extract_date(body) or extract_date(title)
+        if not when:
+            m = re.search(r"\((20\d\d)\)", title)
+            when = f"{m.group(1)}-01-01" if m else None
+        sev = _severity(cat, text)
         age = months_ago(when)
         if age is not None and age > 24:
             continue
-        if age is not None and age > 12 and sev == "medium":
+        if age is not None and age > 18 and sev == "medium":
             sev = "low"
         findings.append({"severity": sev, "status": "reported", "category": cat, "title": title[:110],
-                         "body": body, "date": when, "sources": sources})
-    if nothing:
-        findings = []
+                         "body": body[:600], "date": when, "sources": sources})
     sanc = [f for f in findings if f["category"] == "sanctions"]
-    all_src = []
-    for k in list(ctx.values())[:8]:
-        for o in k.get("origins") or []:
-            d = o.get("document") or {}
-            all_src.append({"name": d.get("name") or "Source", "url": d.get("url"), "date": None})
+    all_src = _ks_sources(list(ctx.values())[:8])
     return {"findings": findings, "screened": len(ctx),
             "sanctions": {"clear": not sanc, "screened": len(ctx),
                           "text": (f"Possible sanctions exposure reported across {len(ctx)} sources" if sanc else
                                    f"No sanctions matches across {len(ctx)} screened sources"),
-                          "sources": merge_sources(*[f["sources"] for f in sanc]) if sanc else merge_sources(
-                              all_src, cap=3)}}
+                          "sources": merge_sources(*[f["sources"] for f in sanc]) if sanc else all_src[:3]}}
 
 
 def _short_title(body: str) -> str:

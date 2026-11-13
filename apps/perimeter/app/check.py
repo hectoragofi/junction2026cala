@@ -18,6 +18,8 @@ STEPS = [("match", "Matching the company"), ("profile", "Reading Cala profile"),
          ("people", "Mapping people and owners"), ("events", "Reading corporate events"),
          ("rivals", "Finding closest rivals"), ("screen", "Screening sanctions and news")]
 LABEL = dict(STEPS)
+RIVALS_DEADLINE = 75.0  # seconds from check start
+SCREEN_DEADLINE = 100.0
 
 
 def _period() -> str:
@@ -114,7 +116,7 @@ async def run_check(q: str, portfolio_ids: set[str], portfolio_names: list[str])
     ownership = []
     for rel in ("IS_ULTIMATE_PARENT_OF", "IS_DIRECT_PARENT_OF", "IS_BENEFICIARY_OWNER_OF"):
         for e in ent["inc"].get(rel, []):
-            ownership.append({"id": e["id"], "name": clean_name(e["name"]),
+            ownership.append({"id": e["id"], "name": short_company(e["name"]),
                               "note": {"IS_ULTIMATE_PARENT_OF": "Ultimate parent", "IS_DIRECT_PARENT_OF": "Parent",
                                        "IS_BENEFICIARY_OWNER_OF": "Beneficial owner"}[rel]})
     for i in investors[:12]:
@@ -141,20 +143,25 @@ async def run_check(q: str, portfolio_ids: set[str], portfolio_names: list[str])
     funding.sort(key=lambda f: f.get("date") or "", reverse=True)
     yield step("events", "done", f"{len(funding)} corporate events")
 
+    # Slow calls keep running (and caching) in the background if they miss the deadline.
     yield step("rivals", "running")
+    rivals, rivals_late = [], False
     try:
-        rivals = await rivals_task
+        rivals = await asyncio.wait_for(asyncio.shield(rivals_task), max(5.0, RIVALS_DEADLINE - (time.monotonic() - t0)))
+    except asyncio.TimeoutError:
+        rivals_late = True
     except Exception:
         rivals = []
     rv = [{"id": r["id"], "name": r["name"], "sub": r.get("sub"),
            "in_portfolio": r["id"] in portfolio_ids or any(same_org(r["name"], n) for n in portfolio_names)}
           for r in rivals]
-    yield step("rivals", "done", ", ".join(r["name"] for r in rv[:3]) if rv else "None found")
+    yield step("rivals", "done", ", ".join(r["name"] for r in rv[:3]) if rv else (
+        "Still loading from Cala, run the check again shortly" if rivals_late else "None found"))
 
     yield step("screen", "running")
     try:
-        scr = await screen_task
-    except Exception:
+        scr = await asyncio.wait_for(asyncio.shield(screen_task), max(5.0, SCREEN_DEADLINE - (time.monotonic() - t0)))
+    except (asyncio.TimeoutError, Exception):
         scr = None
     if scr is None:
         scr = {"findings": [], "screened": 0,

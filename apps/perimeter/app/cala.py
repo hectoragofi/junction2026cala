@@ -104,9 +104,10 @@ class Cala:
                 tmp.replace(p)
             fut.set_result(res)
             return res
-        except Exception as e:
-            fut.set_exception(e)
-            fut.exception()  # mark retrieved
+        except BaseException as e:
+            if not fut.done():
+                fut.set_exception(e if isinstance(e, Exception) else CalaError("cancelled"))
+                fut.exception()  # mark retrieved
             raise
         finally:
             self.inflight.pop(k, None)

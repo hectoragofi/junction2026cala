@@ -365,7 +365,7 @@ async def web(path: str):
     if WEB_DIR.exists():
         f = (WEB_DIR / path).resolve()
         if path and f.is_file() and WEB_DIR.resolve() in f.parents:
-            return FileResponse(f)
+            return FileResponse(f, headers={"Cache-Control": "no-cache"})
         idx = WEB_DIR / "index.html"
         if idx.exists():
             return FileResponse(idx, headers={"Cache-Control": "no-cache"})

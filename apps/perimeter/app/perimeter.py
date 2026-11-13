@@ -58,7 +58,12 @@ async def build(portfolio_ids: list[str], progress=None) -> dict:
     port_ids = {c["id"] for c in port}
 
     say("rivals")
-    rival_lists = await asyncio.gather(*[kg.find_rivals(c, cap=RIVAL_CAP + 1) for c in port])
+    async def rivals_for(c):
+        try:
+            return await asyncio.wait_for(kg.find_rivals(c, cap=RIVAL_CAP + 1), 240)
+        except Exception:
+            return []
+    rival_lists = await asyncio.gather(*[rivals_for(c) for c in port])
     for c, rl in zip(port, rival_lists):
         c["rivals"] = [r for r in rl if r["id"] not in port_ids and not any(
             same_org(r["name"], p["name"]) for p in port)][:RIVAL_CAP]
@@ -405,19 +410,19 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
                         if v is not None} for p in c["people"][:15]],
         }
 
-    all_inv = {norm_key(i["name"]) for c in list(port) + list(rivals.values()) for i in c["investors"]}
-    all_people = {p["id"] for c in list(port) + list(rivals.values()) for p in c["people"]}
-    countries = {c.get("country") for c in list(port) + list(rivals.values()) if c.get("country")}
-    ent_ids = set(universe) | all_people | {i["id"] for c in list(port) + list(rivals.values())
-                                            for i in c["investors"]} | {e["id"] for c in list(port) + list(
-        rivals.values()) for e in c["events"]}
-    facts = sum(c["facts_count"] for c in list(port) + list(rivals.values())) + sum(
-        len(c["events"]) for c in list(port) + list(rivals.values()))
-    stats = {"rivals": len(rivals), "investors": len(all_inv), "people": len(all_people),
-             "countries": len(countries), "entities": len(ent_ids), "facts": facts}
+    pub = [pub_company(c) for c in port]
+    shown_rivals = {r["id"] for c in pub for r in c["rivals"]}
+    shown_inv = {norm_key(i["name"]) for c in pub for i in c["investors"]}
+    shown_people = {p["id"] for c in pub for p in c["people"]}
+    countries = {c.get("country") for c in port if c.get("country")} | {
+        rivals[r]["country"] for r in shown_rivals if rivals[r].get("country")}
+    facts = sum(c["facts_count"] + len(c["events"]) for c in list(port) + list(rivals.values()))
+    stats = {"rivals": len(shown_rivals), "investors": len(shown_inv), "people": len(shown_people),
+             "countries": len(countries), "entities": len(pub) + len(shown_rivals) + len(shown_inv) + len(shown_people),
+             "facts": facts}
 
     return {
-        "perimeter": {"companies": [pub_company(c) for c in port], "stats": stats, "signals": signals},
+        "perimeter": {"companies": pub, "stats": stats, "signals": signals},
         "feed": {"summary": summary, "items": items},
         "portfolio": [_company_pub(c) for c in port],
         "rivals_index": {rid: {"name": universe[rid]["name"], "of": [universe[x]["name"] for x in v]}
