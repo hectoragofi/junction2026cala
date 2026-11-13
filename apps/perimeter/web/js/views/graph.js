@@ -34,11 +34,13 @@ function build(cos) {
 
 export function mountGraph(wrap, cos) {
   const { nodes, edges, byKey } = build(cos);
-  const W = 1000, H = 640;
+  const tall = (wrap.clientWidth || 1000) < (wrap.clientHeight || 640) * 1.1;
+  const W = tall ? 640 : 1000, H = tall ? 900 : 640;
+  const GX = tall ? .009 : .0025, GY = tall ? .0025 : .009;
   // initial positions: portfolio on a ring, satellites around their first owner
   const cosN = nodes.filter(n => n.kind === 'co');
   const R0 = cosN.length > 1 ? 210 : 0;
-  cosN.forEach((n, i) => { const a = (i / cosN.length) * Math.PI * 2 - Math.PI / 2; n.x = W / 2 + Math.cos(a) * R0 * 1.6; n.y = H / 2 + Math.sin(a) * R0 * .7; });
+  cosN.forEach((n, i) => { const a = (i / cosN.length) * Math.PI * 2 - Math.PI / 2; n.x = W / 2 + Math.cos(a) * R0 * (tall ? .7 : 1.6); n.y = H / 2 + Math.sin(a) * R0 * (tall ? 1.6 : .7); });
   const nb = new Map(nodes.map(n => [n, new Set()]));
   edges.forEach(e => { e.a = byKey.get(e.s); e.b = byKey.get(e.t); nb.get(e.a).add(e.b); nb.get(e.b).add(e.a); });
   nodes.forEach(n => {
@@ -80,7 +82,7 @@ export function mountGraph(wrap, cos) {
     });
     // gravity + integrate
     nodes.forEach(n => {
-      n.vx += (W / 2 - n.x) * .0025 * k; n.vy += (H / 2 - n.y) * .009 * k;
+      n.vx += (W / 2 - n.x) * GX * k; n.vy += (H / 2 - n.y) * GY * k;
       if (n.fx != null) { n.x = n.fx; n.y = n.fy; n.vx = n.vy = 0; return; }
       n.vx *= .6; n.vy *= .6;
       n.x += Math.max(-30, Math.min(30, n.vx)); n.y += Math.max(-30, Math.min(30, n.vy));

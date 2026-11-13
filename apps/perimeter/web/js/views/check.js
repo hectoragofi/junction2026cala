@@ -28,6 +28,8 @@ function renderEmpty(ctx, value = '') {
   $('#ckIn').focus();
 }
 
+const looksLikeId = q => /^[0-9a-f-]{16,}$/i.test(q) || /^[a-z]+-[a-z0-9-]+$/.test(q);
+
 function stepHTML(key, label, st) {
   const s = st?.status || 'pending';
   const icon = s === 'done' ? '✓' : s === 'error' ? '!' : '';
@@ -38,7 +40,7 @@ function run(ctx, q) {
   const steps = {};
   const t0 = Date.now();
   ctx.app.innerHTML = `<main class="main">
-    <div class="check-head in"><span class="meta" id="ckMeta">Checking in Cala · <span id="ckT">0 s</span></span><h1>${esc(q)}</h1></div>
+    <div class="check-head in"><span class="meta" id="ckMeta">Checking in Cala · <span id="ckT">0 s</span></span><h1>${esc(looksLikeId(q) ? 'Company check' : q)}</h1></div>
     <div class="card in" aria-live="polite"><div class="steps" id="steps">${STEPS.map(([k, l]) => stepHTML(k, l)).join('')}</div></div>
     <div class="sec" aria-hidden="true" style="opacity:.7">
       <div class="card counts"><div class="sk" style="height:56px;flex:1"></div></div>
@@ -118,7 +120,7 @@ function renderReport(ctx, q, r) {
     ${section('Company', facts.length ? `<div class="card facts">${facts.map((f, i) => factBtn(f, i, facts.length)).join('')}</div>` : '', 'Every field with a dot opens its Cala source and date.')}
     ${section('People', (r.people || []).length ? `<div class="card">${r.people.map(person).join('')}</div>` : '')}
     ${section('Ownership', (r.ownership || []).length ? `<div class="card">${r.ownership.map(owner).join('')}</div>` : '')}
-    ${section('Funding', (r.funding || []).length ? `<div class="card">${r.funding.map(f => `<div class="row"><span style="width:76px;flex-shrink:0;color:var(--faint)">${esc(fmtMonth(f.date))}</span><span class="grow">${esc(f.label)}</span>${srcChips(f.sources, 1)}<span style="font-weight:600;${f.amount ? '' : 'color:var(--faint)'}">${esc(f.amount || '—')}</span></div>`).join('')}</div>` : '')}
+    ${section('Funding', (r.funding || []).length ? `<div class="card">${r.funding.map(f => `<div class="row frow"><span style="width:76px;flex-shrink:0;color:var(--faint)">${esc(fmtMonth(f.date))}</span><span class="grow">${esc(f.label)}</span>${srcChips(f.sources, 1)}<span style="font-weight:600;${f.amount ? '' : 'color:var(--faint)'}">${esc(f.amount || '—')}</span></div>`).join('')}</div>` : '')}
     ${section('Closest rivals', (r.rivals || []).length ? `<div class="card">${r.rivals.map(x => `<div class="row" style="flex-wrap:wrap"><span class="grow" style="font-weight:500">${entLink(ref(x, 'Company'))}</span>${x.sub ? `<span class="meta" style="color:var(--muted)">${esc(x.sub)}</span>` : ''}${x.in_portfolio ? '<span class="pill soft">Your portfolio</span>' : `<a class="btn ghost" href="#/check/${encodeURIComponent(x.id)}" aria-label="Check ${esc(x.name)}">Check →</a>`}</div>`).join('')}</div>` : '')}
 
     <div style="display:flex;gap:8px;flex-wrap:wrap">

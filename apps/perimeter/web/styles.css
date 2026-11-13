@@ -136,7 +136,7 @@ button.pill.hot:hover{background:#E2E7FF}
 .scrim{position:fixed;inset:0;z-index:50;background:rgba(10,10,10,.22);animation:fade .2s ease;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px}
 .modal{background:var(--card);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.18);width:100%;max-width:600px;max-height:76vh;display:flex;flex-direction:column;animation:rise .24s var(--ease);overflow:hidden}
 .modal-h{display:flex;align-items:center;gap:12px;padding:18px 20px 0}
-.modal-b{padding:16px 20px 20px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.modal-b{padding:16px 20px 20px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:14px}
 .modal-f{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);background:var(--bg)}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:500;color:var(--faint)}
@@ -157,7 +157,7 @@ button.pill.hot:hover{background:#E2E7FF}
 .pal-in{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .pal-in input{flex-grow:1;border:0;outline:0;font-size:17px;background:none;min-width:0}
 .pal-in svg{color:var(--faint);flex-shrink:0}
-.pal-b{padding:18px 20px 22px;overflow:auto;display:flex;flex-direction:column;gap:16px}
+.pal-b{padding:18px 20px 22px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:16px}
 .sugg{display:flex;flex-direction:column;gap:2px}
 .sugg button{display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;padding:10px 12px;border-radius:10px;font-size:14px;color:var(--ink)}
 .sugg button:hover,.sugg button:focus-visible{background:var(--fill);outline:0}
@@ -331,7 +331,7 @@ button.fact:hover{background:var(--bg)}
 }
 @media (max-width:720px){
   .hdr-in{height:56px;padding:0 16px}
-  .hdr .seg,.askbtn{display:none}
+  .hdr .seg,.askbtn,.mhide{display:none}
   .iconbtn{display:flex}
   .tabbar{display:flex;position:fixed;z-index:30;left:0;right:0;bottom:0;background:rgba(250,250,250,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
   .tabbar a,.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;font-size:11px;font-weight:500;color:var(--faint);text-decoration:none;border:0;background:none;border-radius:10px}
@@ -357,6 +357,9 @@ button.fact:hover{background:var(--bg)}
   .counts .info{flex-basis:100%;padding-top:14px;border-top:1px solid var(--line)}
   .counts .sep.last{display:none}
   .check-head h1{font-size:28px}
+  .frow .src{display:none}
+  .sanc{flex-wrap:wrap}
+  .sanc .grow{flex-basis:calc(100% - 30px)}
   .facts{grid-template-columns:minmax(0,1fr)}
   .fact{border-right:0}
   .fact.last2{border-bottom:1px solid var(--line)}
@@ -366,8 +369,9 @@ button.fact:hover{background:var(--bg)}
   .stat:nth-last-child(-n+2){border-bottom:0}
   .sig{flex-direction:column;gap:8px;padding:14px 18px}
   .sig>.pill{width:auto}
-  .graph-wrap{height:480px}
-  .legend{right:16px;border-radius:12px}
+  .graph-wrap{height:600px}
+  .legend{right:16px;border-radius:12px;gap:4px 10px;font-size:11px;left:10px;right:10px;bottom:10px}
+  .graph-wrap svg{touch-action:pan-y}
   .ghint{display:none}
   .sheet{width:100vw;top:auto;max-height:88vh;border-radius:18px 18px 0 0;border-left:0;animation:sheetup .3s var(--ease)}
   .scrim{padding:16px 10px;align-items:flex-start}

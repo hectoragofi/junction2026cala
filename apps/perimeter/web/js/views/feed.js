@@ -41,7 +41,7 @@ function cardHTML(it) {
     ? `<div class="acts yn"><button type="button" class="btn" data-yes="${esc(it.id)}">Yes, it’s them</button><button type="button" class="btn" data-no="${esc(it.id)}">Not this company</button><span class="grow"></span>${srcChips(it.sources)}</div>`
     : `<div class="acts">${srcChips(it.sources)}<span class="grow"></span>
         ${it.severity === 'high' && !overlap && !draft ? `<button type="button" class="btn ghost" data-no="${esc(it.id)}">Not this company</button>` : ''}
-        ${draft ? `<button type="button" class="btn dark" data-draft="${esc(it.id)}">Draft note to founder</button>` : ''}</div>`;
+        ${draft ? `<button type="button" class="btn dark" data-draft="${esc(it.id)}">Draft note<span class="mhide"> to founder</span></button>` : ''}</div>`;
   return `<article class="card fcard${possible ? ' possible' : ''}" data-item="${esc(it.id)}">
     <div class="lbls">${labels}${metaLine(it)}</div>
     <h3>${esc(it.title)}</h3>

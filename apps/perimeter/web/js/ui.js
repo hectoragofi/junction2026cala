@@ -206,6 +206,8 @@ export function trapFocus(e, root) {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
+export function closeModals() { [...modalStack].reverse().forEach(m => m.close()); }
+
 // ---------- toast ----------
 let toastT;
 export function toast(msg, action) {
@@ -286,8 +288,8 @@ export function installGlobal({ onAsk }) {
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (layer) { e.preventDefault(); closeLayer(); return; }
-    if (modalStack.length) { e.preventDefault(); modalStack[modalStack.length - 1].close(); return; }
-    if (sheet) { e.preventDefault(); closeSheet(); }
+    if (sheet) { e.preventDefault(); closeSheet(); return; }
+    if (modalStack.length) { e.preventDefault(); modalStack[modalStack.length - 1].close(); }
   });
   let tipTarget = null;
   document.addEventListener('mouseover', e => {

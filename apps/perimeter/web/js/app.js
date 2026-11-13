@@ -1,5 +1,5 @@
 import { api, initApi, state as apiState } from './api.js';
-import { $, esc, installGlobal, closeSheet, closeLayer, hideTip } from './ui.js';
+import { $, esc, installGlobal, closeSheet, closeLayer, hideTip, closeModals } from './ui.js';
 import { openAsk, renderAskPage } from './views/ask.js';
 
 const app = $('#app');
@@ -40,7 +40,7 @@ let routeSeq = 0;
 async function route() {
   const seq = ++routeSeq;
   cleanup?.(); cleanup = null;
-  closeSheet(); closeLayer(); hideTip();
+  closeSheet(); closeLayer(); hideTip(); closeModals();
   const raw = location.hash.replace(/^#/, '') || '/';
   const [pathPart, query = ''] = raw.split('?');
   const qs = new URLSearchParams(query);
