@@ -100,7 +100,9 @@ own profile can always be changed. Cold builds share a global queue (`BUILD_SLOT
   - news about a portfolio company or a rival, last `LIVE_NEWS_DAYS` days: `kind` = `news|regulatory|legal|funding|mna`;
     `status` = `confirmed` for a regulatory filing, `reported` for press, `possible` + `confidence` when the company
     was matched by name and Context.dev is not sure it is the same one (below 0.6 it is not shown at all).
-    Only stories whose `match.level` is `primary` are kept: ones that merely mention the company are dropped.
+    A story that only mentions the company (`match.level` other than `primary`) is never read as its risk: it is
+    kept only if it is a raise or a deal, as an `info` line with `mention: true` and `subject.relation` ending in
+    `mentioned` (a move in the company's market), and dropped otherwise.
   - `kind: "page_change"`: a page monitor saw a watched page change (e.g. a rival's pricing page). `status` is
     `confirmed`, `before` / `after` hold the text excerpts, the source is the page itself.
   Every live item is attached to a company of the current perimeter (`company`, plus `subject` for a rival).

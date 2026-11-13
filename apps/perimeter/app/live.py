@@ -29,8 +29,8 @@ from .perimeter import _sev_rank, summarize
 
 log = logging.getLogger("perimeter.live")
 
-NEWS_DAYS = int(os.environ.get("LIVE_NEWS_DAYS", "14"))         # how far back a sweep looks
-KEEP_DAYS = int(os.environ.get("LIVE_KEEP_DAYS", "21"))         # how long an item stays in the feed
+NEWS_DAYS = int(os.environ.get("LIVE_NEWS_DAYS", "30"))         # how far back a sweep looks
+KEEP_DAYS = int(os.environ.get("LIVE_KEEP_DAYS", "30"))         # how long an item stays in the feed
 REFRESH_MIN = float(os.environ.get("LIVE_REFRESH_MIN", "30"))   # minutes between sweeps
 NEWS_LIMIT = int(os.environ.get("LIVE_NEWS_LIMIT", "10"))       # articles per company per sweep (1 credit per 10)
 POSSIBLE_BELOW = float(os.environ.get("LIVE_POSSIBLE_BELOW", "0.85"))
@@ -46,9 +46,32 @@ _lock = asyncio.Lock()
 
 _FUNDING = re.compile(r"\b(raises?|raised|secures?|secured|closes?|closed|lands?|bags?)\b[^.]{0,40}(€|\$|£|\d)"
                       r"|\b(funding|financing|investment) round\b|\bseries [a-h]\b|\b(pre-)?seed round\b"
-                      r"|\bvaluation of\b|\bvalued at\b", re.I)
+                      r"|\bvaluation of\b|\bvalued at\b"
+                      r"|\blevée\b|\blève(nt)?\b|\btour de table\b|\bfinanzierungsrunde\b|\bronda de financiación\b",
+                      re.I)
 _MNA = re.compile(r"\b(acquires?|acquired|acquisition of|to acquire|to buy|buys|bought|takeover|merger with"
                   r"|merges with|agreed to (buy|acquire))\b", re.I)
+
+
+# kg._classify matches substrings ("fine" in "fine-tuned", "hack" in "hackathon"), which suits answers to an
+# adverse-news question but not general news. Here every term is a whole word or phrase.
+_ADVERSE = [
+    ("sanctions", re.compile(r"\b(sanction(s|ed)?|ofac|asset freeze|embargo)\b", re.I)),
+    ("regulatory", re.compile(
+        r"\b(fine[sd]|fine of|penalt(y|ies)|enforcement (action|notice)|investigat(es?|ed|ion|ing)|probe[sd]?"
+        r"|licen[cs]e (was |is )?(revoked|suspended|withdrawn)|money laundering|anti-money|aml|consent order"
+        r"|cease and desist|watchdog)\b|(€|\$|£)\s?[\d.,]+\s?(m|mn|million|bn|billion)? fine\b", re.I)),
+    ("legal", re.compile(
+        r"\b(lawsuit|sue[sd]|suing|litigation|class action|indict(s|ed|ment)|charged with|fraud|criminal"
+        r"|prosecut\w+|tribunal|court (ruling|case|order|filing)|files? (a )?(claim|suit)|contract dispute)\b", re.I)),
+    ("news", re.compile(
+        r"\b(data (breach|leak)|breach(es|ed)?|hacked|cyber ?attack|outage|layoffs?|lays? off|laid off|job cuts"
+        r"|redundanc\w+|insolven\w+|bankrupt\w*|write-?down|resign(s|ed|ation)?|scandal)\b", re.I)),
+]
+
+
+def adverse(text: str) -> str | None:
+    return next((cat for cat, rx in _ADVERSE if rx.search(text)), None)
 
 
 # --------------------------------------------------------------------------- store
@@ -149,10 +172,7 @@ def news_item(article: dict, target: dict) -> dict | None:
         return None
     by_domain = bool(target.get("domain"))
     match = article.get("match") or {}
-    # Context.dev also returns stories that only mention the company ("secondary"), with high confidence.
-    # Those are about someone else, so showing them, or worse classifying them as a risk, would mislead.
-    if (match.get("level") or "primary").lower() != "primary":
-        return None
+    mention = (match.get("level") or "primary").lower() != "primary"
     conf = match.get("confidence")
     conf = float(conf) if isinstance(conf, (int, float)) else None
     if not by_domain:
@@ -164,10 +184,31 @@ def news_item(article: dict, target: dict) -> dict | None:
 
     text = f"{title}. {article.get('description') or ''}"
     rival = target["role"] == "rival"
-    adverse = kg._classify(text)
-    if adverse:
-        kind = {"regulatory": "regulatory", "legal": "legal", "sanctions": "regulatory", "news": "news"}[adverse]
-        category, sev = "Risk", kg._severity(adverse, text)
+    if mention:
+        # The story is about someone else and only cites this company. A raise or a deal by a company that
+        # cites one of ours is a move in its market, worth a quiet line; anything else is noise. It is never
+        # read as a risk for the company, because the bad news is not about it.
+        if conf is None or conf < POSSIBLE_BELOW:
+            return None
+        kind = "funding" if _FUNDING.search(text) else "mna" if _MNA.search(text) else None
+        if not kind:
+            return None
+        src = article.get("source") or {}
+        who = target["subject"] or target["company"]
+        relation = f"{target['subject']['relation']}, mentioned" if target.get("subject") else "mentioned"
+        return {
+            "id": _id("news", article.get("story_id") or article.get("id") or url),
+            "kind": kind, "category": "Funding" if kind == "funding" else "Other", "severity": "info",
+            "status": "reported", "title": title, "body": _clip(article.get("description"), 400), "date": day,
+            "company": target["company"],
+            "subject": {"id": who["id"], "name": who["name"], "type": "Company", "relation": relation},
+            "sources": [{"name": src.get("name") or src.get("domain") or "News", "url": url, "date": day}],
+            "actions": [], "live": True, "via": "context.dev", "mention": True,
+        }
+    cat = adverse(text)
+    if cat:
+        kind = {"regulatory": "regulatory", "legal": "legal", "sanctions": "regulatory", "news": "news"}[cat]
+        category, sev = "Risk", kg._severity(cat, text)
         if rival:  # same damping as Cala screening findings about rivals
             sev = "medium" if sev == "high" else "low"
     elif _FUNDING.search(text):
@@ -285,8 +326,9 @@ async def sweep(built: dict | None, *, force: bool = False) -> dict:
 
         items: dict = LIVE.get("items") or {}
         new = 0
-        # A story found for a rival and for the portfolio company itself is shown once, as the company's own.
-        found.sort(key=lambda i: 0 if i.get("subject") else 1)
+        # A story found more than once is shown once: as the portfolio company's own if it is about it,
+        # then as a rival's, and only as a mention if nothing better matched.
+        found.sort(key=lambda i: 0 if i.get("mention") else 1 if i.get("subject") else 2)
         for it in found:
             if it["id"] not in items:
                 new += 1

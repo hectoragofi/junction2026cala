@@ -98,11 +98,40 @@ class NewsMapping(unittest.TestCase):
         self.assertIsNone(live.news_item(article(match={"confidence": 0.4}), TARGETS["paynl"]))
         self.assertIsNone(live.news_item(article(match=None), TARGETS["paynl"]))
 
+    # The next two use titles, types and match values seen in real responses on 13 Nov 2026.
     def test_story_that_only_mentions_the_company_is_dropped(self):
-        # Shape seen in a real response for domain=mollie.com: a Fleet press release that cites Mollie.
         fleet = article(title="Fleet Accelerates European Expansion as Digital Sovereignty Reshapes Enterprise IT",
-                        type="press_release", match={"level": "secondary", "confidence": 0.96})
+                        description="", type="press_release", match={"level": "secondary", "confidence": 0.96})
         self.assertIsNone(live.news_item(fleet, TARGETS["mollie"]))
+
+    def test_a_raise_that_mentions_the_company_is_a_quiet_market_line(self):
+        it = live.news_item(article(title="AI accounting startup Sumary raises $25m seed",
+                                    description="Sumary has raised $25m in a seed funding round led by Singular.",
+                                    match={"level": "secondary", "confidence": 0.91}), TARGETS["mollie"])
+        self.assertEqual((it["kind"], it["category"], it["severity"], it["status"]),
+                         ("funding", "Funding", "info", "reported"))
+        self.assertEqual(it["subject"], {"id": "mollie", "name": "Mollie", "type": "Company", "relation": "mentioned"})
+        self.assertEqual(it["actions"], [])
+        fr = live.news_item(article(title="Deux anciens d’iBanFirst bouclent un tour de table pour leur assistant IA",
+                                    description="", match={"level": "secondary", "confidence": 0.99}), TARGETS["adyen"])
+        self.assertEqual((fr["kind"], fr["subject"]["relation"]), ("funding", "rival of Mollie, mentioned"))
+        unsure = article(title="AI accounting startup Sumary raises $25m seed", description="",
+                         match={"level": "secondary", "confidence": 0.82})
+        self.assertIsNone(live.news_item(unsure, TARGETS["mollie"]))
+
+    def test_bad_news_that_only_mentions_the_company_is_never_its_risk(self):
+        it = live.news_item(article(title="Board investigates rival chief executive after fraud claims", description="",
+                                    match={"level": "secondary", "confidence": 0.95}), TARGETS["mollie"])
+        self.assertIsNone(it)
+
+    def test_everyday_words_are_not_read_as_risk(self):
+        for title in ("Mollie hosts a payments hackathon in Amsterdam", "Mollie ships a fine-tuned checkout",
+                      "Mollie redefines its pricing", "Mollie courts enterprise customers"):
+            it = live.news_item(article(title=title, description=""), TARGETS["mollie"])
+            self.assertEqual((title, it["category"]), (title, "Other"))
+        self.assertEqual(live.adverse("Regulator fines Mollie €3.5 million"), "regulatory")
+        self.assertEqual(live.adverse("Adyen hit with a €2m fine"), "regulatory")
+        self.assertEqual(live.adverse("Port operator files a claim against Pay.nl"), "legal")
 
     def test_old_or_undated_articles_are_dropped(self):
         self.assertIsNone(live.news_item(article(published_at=iso(live.NEWS_DAYS + 2)), TARGETS["mollie"]))
