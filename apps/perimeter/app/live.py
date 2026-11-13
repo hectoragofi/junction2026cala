@@ -29,8 +29,8 @@ from .perimeter import _sev_rank, summarize
 
 log = logging.getLogger("perimeter.live")
 
-NEWS_DAYS = int(os.environ.get("LIVE_NEWS_DAYS", "7"))          # how far back a sweep looks
-KEEP_DAYS = int(os.environ.get("LIVE_KEEP_DAYS", "14"))         # how long an item stays in the feed
+NEWS_DAYS = int(os.environ.get("LIVE_NEWS_DAYS", "14"))         # how far back a sweep looks
+KEEP_DAYS = int(os.environ.get("LIVE_KEEP_DAYS", "21"))         # how long an item stays in the feed
 REFRESH_MIN = float(os.environ.get("LIVE_REFRESH_MIN", "30"))   # minutes between sweeps
 NEWS_LIMIT = int(os.environ.get("LIVE_NEWS_LIMIT", "10"))       # articles per company per sweep (1 credit per 10)
 POSSIBLE_BELOW = float(os.environ.get("LIVE_POSSIBLE_BELOW", "0.85"))
@@ -148,7 +148,12 @@ def news_item(article: dict, target: dict) -> dict | None:
     if not title or not url or not _fresh(day, NEWS_DAYS):
         return None
     by_domain = bool(target.get("domain"))
-    conf = (article.get("match") or {}).get("confidence")
+    match = article.get("match") or {}
+    # Context.dev also returns stories that only mention the company ("secondary"), with high confidence.
+    # Those are about someone else, so showing them, or worse classifying them as a risk, would mislead.
+    if (match.get("level") or "primary").lower() != "primary":
+        return None
+    conf = match.get("confidence")
     conf = float(conf) if isinstance(conf, (int, float)) else None
     if not by_domain:
         # A name can belong to several companies: without a confidence we cannot tell, so we do not show it.

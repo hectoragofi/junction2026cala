@@ -49,7 +49,7 @@ TARGETS = {t["id"]: t for t in live.watchlist(BUILT)}
 def article(**kw) -> dict:
     a = {"id": "a1", "story_id": "s1", "url": "https://news.example/a1", "title": "Mollie opens a Lisbon office",
          "description": "The payments company is hiring 40 people.", "published_at": iso(0), "type": "editorial",
-         "source": {"name": "Example News", "domain": "news.example"}, "match": {"level": "exact", "confidence": 0.97}}
+         "source": {"name": "Example News", "domain": "news.example"}, "match": {"level": "primary", "confidence": 0.97}}
     a.update(kw)
     return a
 
@@ -90,13 +90,19 @@ class NewsMapping(unittest.TestCase):
         self.assertEqual((it["category"], it["severity"]), ("Risk", "low"))
 
     def test_name_match_with_middling_confidence_is_possible(self):
-        it = live.news_item(article(match={"level": "partial", "confidence": 0.72}), TARGETS["paynl"])
+        it = live.news_item(article(match={"level": "primary", "confidence": 0.72}), TARGETS["paynl"])
         self.assertEqual(it["status"], "possible")
         self.assertEqual(it["confidence"], 0.72)
 
     def test_name_match_is_dropped_without_enough_confidence(self):
         self.assertIsNone(live.news_item(article(match={"confidence": 0.4}), TARGETS["paynl"]))
         self.assertIsNone(live.news_item(article(match=None), TARGETS["paynl"]))
+
+    def test_story_that_only_mentions_the_company_is_dropped(self):
+        # Shape seen in a real response for domain=mollie.com: a Fleet press release that cites Mollie.
+        fleet = article(title="Fleet Accelerates European Expansion as Digital Sovereignty Reshapes Enterprise IT",
+                        type="press_release", match={"level": "secondary", "confidence": 0.96})
+        self.assertIsNone(live.news_item(fleet, TARGETS["mollie"]))
 
     def test_old_or_undated_articles_are_dropped(self):
         self.assertIsNone(live.news_item(article(published_at=iso(live.NEWS_DAYS + 2)), TARGETS["mollie"]))
