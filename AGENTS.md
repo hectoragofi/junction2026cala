@@ -4,11 +4,11 @@ Single source of project rules for all coding agents and humans. Short and imper
 
 ## Project
 
-TBD (fill in during the first hour): problem, user, demo. Details in `docs/idea.md`.
+Perimeter: sourced portfolio watch for VCs on Cala's knowledge graph (feed, perimeter map, company check, ask). Details in `docs/idea.md`; API in `apps/perimeter/CONTRACT.md`.
 
 ## Stack and commands
 
-TBD: install / run / test commands. Demo start command (used by `/demo`): TBD. Demo port: TBD.
+Install: `cd apps/perimeter && uv sync`. Run: `cd apps/perimeter && set -a && . ~/hack/.env && set +a && CACHE_DIR=~/hack/data/perimeter-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 8040`. Warm cache: `uv run python scripts/warm.py`. Demo port: 8040.
 
 ## Structure
 
