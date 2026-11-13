@@ -85,11 +85,13 @@ function linkify(text, ents = []) {
 
 function lanesHTML(cos) {
   const MAX = 4;
+  const pf = new Map(cos.map(c => [c.id, c.name]));
   const chipList = (arr, type, fmt) => {
     if (!arr?.length) return '<span class="meta">None in Cala</span>';
     const sorted = [...arr].sort((a, b) => (b.shared_with?.length ? 1 : 0) - (a.shared_with?.length ? 1 : 0));
     const shown = sorted.slice(0, MAX), more = sorted.length - shown.length;
     return shown.map(e => {
+      if (pf.has(e.id)) return entPill({ ...e, type: 'Company' }, e.name + ' · yours', 'hot', `data-tip="${esc(`<b>${esc(e.name)}</b><br><span>Rival, and also in your portfolio</span>`)}"`);
       const hot = e.shared_with?.length;
       const label = fmt ? fmt(e) : e.name;
       const tip = hot ? `<b>${esc(e.name)}</b><br><span>Also touches ${esc(e.shared_with.join(', '))}</span>` : `<b>${esc(e.name)}</b>${e.role || e.sub ? `<br><span>${esc(e.role || e.sub)}</span>` : ''}`;
@@ -103,7 +105,7 @@ function lanesHTML(cos) {
     <div><span class="lbl">People</span><div class="chips">${chipList(c.people, 'Person', p => p.role ? `${p.name} · ${shortRole(p.role)}` : p.name)}</div></div>
   </div>`).join('');
 }
-const shortRole = r => String(r).replace(/co-?founder/i, 'founder').replace(/board member/i, 'board').split(',')[0].toLowerCase();
+const shortRole = r => { const x = String(r).replace(/co-?founder/i, 'founder').replace(/board member/i, 'board').split(',')[0].trim(); return /^[A-Z]{2,4}$/.test(x) ? x : x.toLowerCase(); };
 
 function countNodes(cos) {
   const s = new Set(); cos.forEach(c => { s.add(c.id); ['rivals', 'investors', 'people'].forEach(k => (c[k] || []).forEach(e => s.add(e.id || e.name))); }); return s.size;

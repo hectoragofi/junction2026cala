@@ -6,7 +6,7 @@
   --ease:cubic-bezier(.2,.7,.2,1);
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scrollbar-gutter:stable}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;min-height:100vh}
 a{color:var(--ink)}a:hover{color:var(--accent-ink)}
 button{font-family:inherit;cursor:pointer;color:inherit}
@@ -195,7 +195,7 @@ button.pill.hot:hover{background:#E2E7FF}
 .demo-cta:hover .arr{transform:translateX(3px)}
 .or{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-.cand{font-size:12px;color:var(--muted);border:1px solid var(--line);background:var(--bg);border-radius:999px;height:24px;padding:0 10px}
+.cand{display:inline-flex;align-items:center;white-space:nowrap;flex-shrink:0;font-size:12px;color:var(--muted);border:1px solid var(--line);background:var(--bg);border-radius:999px;height:24px;padding:0 10px}
 .cand:hover{border-color:var(--ink);color:var(--ink)}
 .build{display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;padding-top:40px}
 .rings{position:relative;width:180px;height:180px}

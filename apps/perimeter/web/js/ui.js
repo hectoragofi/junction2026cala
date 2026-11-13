@@ -281,7 +281,7 @@ export function installGlobal({ onAsk }) {
     const ask = e.target.closest('[data-ask]');
     if (ask) { e.preventDefault(); closeSheet(); onAsk(ask.dataset.ask); return; }
     if (e.target.closest('[data-close]') && layer && layer.el.contains(e.target)) { closeLayer(); return; }
-    if (layer && !layer.el.contains(e.target)) { layer.restore = false; closeLayer(); }
+    if (layer && !layer.el.contains(e.target) && !layer.anchor?.contains(e.target)) { layer.restore = false; closeLayer(); }
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
