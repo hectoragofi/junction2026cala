@@ -8,6 +8,7 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Doing
 
-- [ ] Perimeter prototype: Cala-backed portfolio watch (feed, map, check, ask) (owner: hector, branch: hector/perimeter)
 
 ## Done
+
+- [x] Perimeter prototype: Cala-backed portfolio watch (feed, map, check, ask) (owner: hector)
