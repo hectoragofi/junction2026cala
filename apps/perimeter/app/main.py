@@ -770,9 +770,16 @@ except ImportError:
 if agent_router is not None:
     app.include_router(agent_router)
 
+    # Ask is the front page; the feed, map, check and profile app lives at /app (hash routes).
+    @app.get("/", include_in_schema=False)
     @app.get("/ask", include_in_schema=False)
     async def ask_page():
         return FileResponse(WEB_DIR / "ask.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/app", include_in_schema=False)
+async def app_page():
+    return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
