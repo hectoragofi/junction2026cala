@@ -138,6 +138,18 @@ class NewsMapping(unittest.TestCase):
         self.assertIsNone(live.news_item(article(published_at=None), TARGETS["mollie"]))
 
 
+class Translations(unittest.TestCase):
+    def test_translated_copies_of_a_story_are_dropped_when_english_exists(self):
+        mk = lambda sid, lang, days: live.news_item(
+            article(id=sid, story_id=sid, url=f"https://news.example/{sid}", language=lang, published_at=iso(days)),
+            TARGETS["mollie"])
+        items = {i["id"]: i for i in (mk("en", "en", 1), mk("it", "it", 2), mk("nl", "nl", 2), mk("fr-old", "fr", 9))}
+        kept = {i["lang"] for i in live.drop_translations(items).values()}
+        self.assertEqual(kept, {"en", "fr"})   # the French story is a week away from any English one: it stays
+        only_fr = {k: v for k, v in items.items() if v["lang"] != "en"}
+        self.assertEqual(len(live.drop_translations(only_fr)), 3)   # no English version: nothing is dropped
+
+
 class ChangeMapping(unittest.TestCase):
     CHANGE = {"id": "c1", "monitor_id": "m1", "url": "https://www.adyen.com/pricing", "title": "Page changed",
               "summary": "The entry plan price dropped.", "importance": "high", "detected_at": iso(0),

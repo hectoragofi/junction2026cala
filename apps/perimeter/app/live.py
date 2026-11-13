@@ -204,6 +204,7 @@ def news_item(article: dict, target: dict) -> dict | None:
             "subject": {"id": who["id"], "name": who["name"], "type": "Company", "relation": relation},
             "sources": [{"name": src.get("name") or src.get("domain") or "News", "url": url, "date": day}],
             "actions": [], "live": True, "via": "context.dev", "mention": True,
+            "lang": article.get("language"),
         }
     cat = adverse(text)
     if cat:
@@ -232,7 +233,7 @@ def news_item(article: dict, target: dict) -> dict | None:
         "title": title, "body": _clip(article.get("description"), 400), "date": day,
         "company": target["company"],
         "sources": [{"name": src.get("name") or src.get("domain") or "News", "url": url, "date": day}],
-        "actions": ["draft_note"], "live": True, "via": "context.dev",
+        "actions": ["draft_note"], "live": True, "via": "context.dev", "lang": article.get("language"),
     }
     if status == "possible":
         item["confidence"] = round(conf, 2)
@@ -273,6 +274,27 @@ def change_item(change: dict, target: dict) -> dict | None:
     if target.get("subject"):
         item["subject"] = target["subject"]
     return item
+
+
+def drop_translations(items: dict) -> dict:
+    """Wire stories are republished in several languages as separate stories. When an English story about a
+    company exists, other-language stories about the same company within two days of it are dropped."""
+    def who(i):
+        return ((i.get("subject") or i["company"]).get("id"), bool(i.get("mention")))
+
+    english: dict = {}
+    for i in items.values():
+        if i.get("kind") != "page_change" and (i.get("lang") or "en") == "en":
+            english.setdefault(who(i), []).append(date.fromisoformat(i["date"]))
+    out = {}
+    for k, i in items.items():
+        lang = i.get("lang") or "en"
+        if i.get("kind") != "page_change" and lang != "en":
+            d = date.fromisoformat(i["date"])
+            if any(abs((d - e).days) <= 2 for e in english.get(who(i), [])):
+                continue
+        out[k] = i
+    return out
 
 
 def _target_for_change(change: dict, targets: list[dict], mmap: dict) -> dict | None:
@@ -336,7 +358,7 @@ async def sweep(built: dict | None, *, force: bool = False) -> dict:
             else:
                 it["first_seen"] = items[it["id"]].get("first_seen")
             items[it["id"]] = it
-        LIVE["items"] = {k: v for k, v in items.items() if _fresh(v.get("date"), KEEP_DAYS)}
+        LIVE["items"] = drop_translations({k: v for k, v in items.items() if _fresh(v.get("date"), KEEP_DAYS)})
         LIVE["updated_at"] = datetime.now(timezone.utc).isoformat()
         LIVE["last_error"] = errors[0] if errors else None
         LIVE["targets"] = len(targets)
