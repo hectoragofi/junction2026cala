@@ -170,3 +170,17 @@ async def conflicts(eid: str, me: str):
             "already_investor": bool(held(company["name"], company["id"])),
             "rivals": [{"id": r["id"], "name": r["name"]} for r in rivals], "conflicts": hits,
             "portfolio_size": len(portfolio)}
+
+
+@router.get("/{eid}/ask")
+async def ask(eid: str, q: str):
+    """A free question about this investor, answered by Cala's knowledge search with its sources."""
+    q = q.strip()
+    if not q:
+        raise HTTPException(400, "Ask a question")
+    inv = await _investor(eid)
+    try:
+        res = await cala.ksearch(f"{q} (about the investor {inv['name']})")
+    except CalaError as e:
+        raise HTTPException(502, f"Cala could not answer: {e}")
+    return {"answer_md": res.get("content") or "", "sources": kg._ks_sources(res.get("context") or [])}
