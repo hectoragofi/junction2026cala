@@ -103,7 +103,7 @@ def clean_name(name: str) -> str:
     if n.isupper() and len(n.replace(" ", "")) > 4:
         words = []
         for w in n.split():
-            lw = w.lower().strip(".,")
+            lw = w.lower().strip(".,").replace(".", "")
             if lw in {"llc", "lp", "llp", "ltd", "gmbh", "inc", "sa", "sas", "bv", "nv", "plc", "ag", "ab"}:
                 words.append(w.upper() if lw in {"llc", "lp", "llp", "bv", "nv", "plc", "sa", "sas", "ag", "ab"}
                              else w.capitalize())
@@ -442,7 +442,7 @@ def people_of(ent: dict) -> list[dict]:
 
 def person_key(name: str) -> str:
     t = re.sub(r"[^a-z ]+", " ", strip_accents(name or "").lower()).split()
-    return f"{t[0]} {t[-1]}" if len(t) >= 2 else " ".join(t)
+    return f"{t[0][:3]} {t[-1]}" if len(t) >= 2 else " ".join(t)  # "Nik"/"Nikolay Storonsky" merge
 
 
 def _role_text(roles: list[str]) -> str:
@@ -540,7 +540,7 @@ ADVERSE = {
                    "supervis", "cease", "consent order", "watchdog", "breach of"],
     "legal": ["lawsuit", "sued", "suing", "court", "litigation", "class action", "settlement", "indict",
               "charged", "fraud", "criminal", "prosecut", "tribunal"],
-    "news": ["data breach", "data exposure", "hack", "outage", "layoff", "lay off", "job cuts", "redundanc",
+    "news": ["data breach", "data exposure", "data leak", "leak", "hack", "outage", "layoff", "lay off", "job cuts", "redundanc",
              "insolven", "bankrupt", "administration", "write-down", "loss", "resign", "scandal", "exposed"],
 }
 NEGATIONS = ["no adverse", "no record", "no evidence", "no reported", "no known", "not found", "no information",

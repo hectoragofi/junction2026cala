@@ -119,6 +119,12 @@ async def run_check(q: str, portfolio_ids: set[str], portfolio_names: list[str])
             ownership.append({"id": e["id"], "name": short_company(e["name"]),
                               "note": {"IS_ULTIMATE_PARENT_OF": "Ultimate parent", "IS_DIRECT_PARENT_OF": "Parent",
                                        "IS_BENEFICIARY_OWNER_OF": "Beneficial owner"}[rel]})
+    merged_own: dict[str, dict] = {}
+    for o in ownership:
+        if o["id"] in merged_own:
+            continue
+        merged_own[o["id"]] = o
+    ownership = list(merged_own.values())
     for i in investors[:12]:
         note = i["sub"]
         if i["rounds"]:

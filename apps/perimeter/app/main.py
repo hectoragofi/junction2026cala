@@ -246,7 +246,7 @@ def ask_payload(res: dict) -> dict:
             continue
         seen.add(e.get("id"))
         t = e.get("entity_type") or "Entity"
-        ents.append({"id": e.get("id"), "name": e.get("name"),
+        ents.append({"id": e.get("id"), "name": kg.clean_name(e.get("name") or ""),
                      "type": "Company" if t in kg.COMPANY_TYPES else t})
     return {"answer_md": res.get("content") or "", "sources": sources, "entities": ents[:20]}
 
