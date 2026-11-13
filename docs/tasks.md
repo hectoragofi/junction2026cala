@@ -14,6 +14,8 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Doing
 
+- [ ] Profiles + onboarding: per-browser profile (role, my company, portfolio), settings page, role chooser at /, per-profile state (owner: hector, branch: hector/profile)
+
 
 ## Done
 
