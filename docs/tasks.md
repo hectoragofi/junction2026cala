@@ -11,3 +11,4 @@
 ## Done
 
 - [x] 
+- [ ] Smoke test from VPS setup (delete me)
