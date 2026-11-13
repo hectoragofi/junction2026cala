@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import difflib
+import html
 import re
 import unicodedata
 from datetime import date
@@ -679,6 +680,7 @@ def parse_screen(res: dict, name: str) -> dict:
             continue
         if age is not None and age > 18 and sev == "medium":
             sev = "low"
+        title, body = html.unescape(title), html.unescape(body)
         findings.append({"severity": sev, "status": "reported", "category": cat, "title": title[:110],
                          "body": body[:600], "date": when, "sources": sources})
     sanc = [f for f in findings if f["category"] == "sanctions"]

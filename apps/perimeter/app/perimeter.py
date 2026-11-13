@@ -372,7 +372,10 @@ def compute(port: list[dict], rivals: dict[str, dict], persons: dict[str, dict],
     for c in port:
         s = screens.get(c["id"])
         for f in (s or {}).get("findings", []):
-            items.append(_finding_item(f, cref(c["id"]), None))
+            f2 = dict(f)
+            if c["name"].lower() not in f["title"].lower():
+                f2["title"] = f"{c['name']}: {f['title']}"
+            items.append(_finding_item(f2, cref(c["id"]), None))
     for rid, s in rival_screens.items():
         if not s or rid not in rival_of:
             continue
