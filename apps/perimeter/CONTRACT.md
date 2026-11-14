@@ -122,3 +122,11 @@ own profile can always be changed. Cold builds share a global queue (`BUILD_SLOT
 - `POST /api/draft {item_id}` → `{ subject, body }` (note to the founder about a feed item; facts + sources only)
 - `GET /api/entity/{id}` → `{ id, name, type, description, facts: Fact[], relations: {[rel]: EntityRef[]} }`
   (used by source/entity popovers)
+- `POST /api/agent {q, history?, profile?}` → SSE for the Ask page: `step {text}`, `widget {type, ...}`, `done {}`,
+  `error {message}`, and `graph {nodes, edges}` after each round of tool calls: everything the tools have read
+  from Cala so far in this answer (cumulative, so the last one is complete).
+  `nodes: [{id, name, kind: company|investor|rival|person, sub?, focus?: bool}]` (`focus` = the question was about it),
+  `edges: [{s, t, rel: invested|role|rival|acquired|parent, label?, date?, src?: {name, url}}]` (`s` invested in `t`,
+  `s` has a role at `t`, `s` acquired `t`, `s` is the parent of `t`).
+- `GET /api/agent/graph/{id}` → `{nodes, edges}` in the same shape: one entity and its neighbours, used by
+  "Expand from Cala" in the Ask graph (one Cala call, no model).

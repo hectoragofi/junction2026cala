@@ -14,6 +14,8 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Doing
 
+- [ ] Ask graph: visualizer of everything an Ask answer read from Cala, with what the answer left out (owner: aranguren, branch: aranguren/ask-graph)
+
 
 
 ## Done

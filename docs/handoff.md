@@ -2,6 +2,13 @@
 
 Add a new entry at the top each time.
 
+## 2026-11-14 - aranguren (ask graph)
+
+- Done: graph visualizer on the Ask page. `app/askgraph.py` records every entity and link the agent tools read from Cala (not only what the model was shown); `/api/agent` streams it as a `graph` event; `web/js/askgraph.js` draws it under the widgets and keeps it across follow-up questions. Entities the answer never named but that link two or more others are ringed in blue and listed under the graph. Click an entity for its links and sources, "Expand from Cala" (`GET /api/agent/graph/{id}`) or "Ask about this".
+- State: on branch `aranguren/ask-graph`, not merged. Tested only against a made-up Cala and a scripted model (no keys on my laptop): needs one run on the VPS with real data before shipping.
+- Next: check graph size on a big investor (profile reads up to 80 portfolio companies), then /ship.
+- Gotchas: `research` adds nothing to the graph (free text). `investor_overlap` only adds portfolio companies held by two or more of the investors, to keep the graph readable.
+
 ## 2026-11-14 - hector
 
 - Done: per-browser profiles (X-Profile header + pid cookie, CACHE_DIR/profiles), onboarding at / (raising / investing / demo), #/profile settings, founder home. /api/profile returns `context` used by /ask. All Ask entry points (header, Ctrl+K, "Ask about") go to /ask?q=. /investors removed.

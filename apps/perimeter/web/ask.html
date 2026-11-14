@@ -143,6 +143,74 @@ td:first-child{font-weight:500}
 @keyframes sh{to{background-position:-200% 0}}
 .dock{position:fixed;left:0;right:0;bottom:0;padding:14px 20px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 62%,transparent);pointer-events:none}
 
+/* graph of the search (js/askgraph.js) */
+.ag{margin-top:14px;padding:0;overflow:hidden}
+.ag-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;padding:16px 18px 12px}
+.ag-top .ttl{margin-bottom:2px;color:var(--ink);font-weight:600;font-size:14px}
+.ag-count{font-size:13px;color:var(--muted)}
+.ag-tools,.ag-acts{display:flex;gap:6px;flex-wrap:wrap}
+.ag-btn{font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);color:var(--muted);white-space:nowrap;transition:border-color .15s,color .15s}
+.ag-btn:hover{border-color:var(--ink);color:var(--ink)}
+.ag-btn.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+.ag-btn:disabled{opacity:.5;cursor:default}
+.ag-stage{position:relative;height:500px;display:flex;flex-direction:column;overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:radial-gradient(circle at 1px 1px,#E6E6EA 1px,transparent 0) 0 0/22px 22px,var(--bg)}
+.ag-stage svg{width:100%;flex:1;min-height:0;display:block;touch-action:none;cursor:grab}
+.ag-stage svg.drag{cursor:grabbing}
+.ag-edge{stroke:#D5D5DB;stroke-width:1;transition:opacity .2s}
+.ag-edge.role{stroke:#E0E0E5}
+.ag-edge.rival{stroke:#E9A29C;stroke-dasharray:4 4}
+.ag-edge.hot{stroke:var(--accent);stroke-opacity:.45}
+.ag-node{cursor:pointer;outline:none;transition:opacity .2s}
+.ag-node text{pointer-events:none}
+.ag-node.sel :not(.halo,text),.ag-node:focus-visible :not(.halo,text){stroke:var(--accent);stroke-width:3}
+.ag-label{font-size:11px;fill:var(--muted);pointer-events:none;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round;transition:opacity .2s}
+.ag-label.hub{font-size:13px;font-weight:600;fill:var(--ink)}
+.ag-label.new{fill:var(--accent-ink);font-weight:500}
+.dim .ag-node.fade{opacity:.12}
+.dim .ag-edge.fade{opacity:.06}
+.dim .ag-edge.lit{stroke:var(--ink);stroke-opacity:.7;stroke-width:1.5}
+.ag-legend{display:flex;flex-wrap:wrap;gap:4px 14px;padding:6px 16px 10px;font-size:12px;color:var(--muted)}
+.ag-legend span{display:inline-flex;align-items:center;gap:6px}
+.ag-legend i{width:10px;height:10px;border-radius:50%;display:block;background:#C9C9D1}
+.ag-legend .hub{background:var(--ink);border-radius:3px}
+.ag-legend .inv{background:#fff;box-shadow:inset 0 0 0 1.5px var(--ink)}
+.ag-legend .riv{background:var(--red)}
+.ag-legend .per{background:#8A8A93;width:7px;height:7px}
+.ag-legend .new{background:#fff;box-shadow:inset 0 0 0 2.5px var(--accent),0 0 0 3px var(--accent-soft)}
+.ag-side{position:absolute;top:10px;right:10px;bottom:10px;width:min(320px,calc(100% - 20px));overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-pop);padding:16px;z-index:2}
+.ag-side h3{margin:2px 28px 8px 0;font-size:18px;line-height:1.2;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+.ag-kind{font-size:12px;color:var(--muted);margin-right:28px}
+.ag-x{position:absolute;top:8px;right:10px;width:28px;height:28px;text-align:center;font-size:20px;line-height:1;color:var(--muted);border-radius:999px}
+.ag-x:hover{background:var(--fill);color:var(--ink)}
+.ag-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);margin-bottom:10px}
+.ag-acts{margin-bottom:12px}
+.ag-note{font-size:12px;color:var(--muted);margin-bottom:10px}
+.ag-rows-t{font-size:12px;color:var(--faint);padding-top:10px;border-top:1px solid var(--line)}
+.ag-row{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line)}
+.ag-row:first-child{border-top:0}
+.ag-row button{flex:1;min-width:0;padding:7px 0}
+.ag-row b{display:block;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s}
+.ag-row button:hover b{color:var(--accent-ink)}
+.ag-row span{display:block;font-size:12px;color:var(--muted)}
+.ag-row a{flex-shrink:0;text-decoration:none;font-size:12px;color:var(--muted);width:24px;height:24px;display:grid;place-items:center;border-radius:999px;background:var(--fill)}
+.ag-row a:hover{background:var(--accent-soft);color:var(--accent-ink)}
+.ag-tip{position:absolute;pointer-events:none;z-index:3;max-width:260px;background:var(--ink);color:#fff;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:10px}
+.ag-tip b,.ag-tip span{display:block}
+.ag-tip span{opacity:.75}
+.ag-tip .n{color:#9DB0FF;opacity:1}
+.ag-finds{display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px 16px}
+.ag-finds-t{flex-basis:100%;font-size:13px;color:var(--muted)}
+.ag-find{flex:1 1 220px;min-width:0;padding:10px 12px;border-radius:12px;background:var(--accent-soft);transition:transform .15s var(--ease)}
+.ag-find:hover{transform:translateY(-1px)}
+.ag-find:focus-visible,.ag-row button:focus-visible{border-radius:12px}
+.ag-find b{display:block;font-size:14px;font-weight:600;color:var(--accent-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag-find span{display:block;font-size:12px;color:var(--muted)}
+.ag.ag-full{position:fixed;inset:0;z-index:60;margin:0;border:0;border-radius:0;display:flex;flex-direction:column;animation:none}
+.ag-full .ag-stage{flex:1;height:auto;min-height:0}
+.ag-full .ag-finds{max-height:30vh;overflow-y:auto}
+.ag-lock{overflow:hidden}
+@media (max-width:720px){.ag-stage{height:440px}.ag-stage svg{touch-action:pan-y}.ag-side{top:auto;left:10px;width:auto;max-height:70%}.ag-legend{font-size:11px;gap:2px 8px}}
+
 .foot{margin-top:44px;font-size:12px;color:var(--faint);text-align:center}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -155,6 +223,7 @@ td:first-child{font-weight:500}
 </div></header>
 <main id="app"></main>
 <div class="dock" id="dock" hidden><div class="dockin"><button class="ghost" id="new" hidden>New question</button><form class="ask"><input placeholder="Ask a follow-up" aria-label="Ask a follow-up" autocomplete="off"><button class="go">Ask</button></form></div></div>
+<script src="/js/askgraph.js?v=1"></script>
 <script>
 // Old links such as /#/map pointed at the app when it lived on the front page.
 if (location.hash.startsWith('#/')) location.replace('/app' + location.hash);
@@ -163,6 +232,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 const EXAMPLES = ['Does TCV back any rival of Qonto?', 'Who invested in Pennylane, and when?', 'How active is Greenoaks this year?', 'Compare Mollie and Adyen'];
 const history = [];   // {q, headline} of finished answers, sent as context for follow-ups
+const G = AskGraph.create({ load: id => fetch('/api/agent/graph/' + encodeURIComponent(id)).then(r => { if (!r.ok) throw new Error('graph'); return r.json(); }) });  // everything the answers read from Cala, kept across follow-ups
 let run = 0;          // bumps on every question so a superseded stream stops drawing
 let profile = null;   // who is asking (company, portfolio), when the app has a profile for this browser
 const profileReady = fetch('/api/profile').then(r => r.ok ? r.json() : null).then(p => { me = p; profile = p && (p.context || null); paintWho(); if (atHome) home(); }).catch(() => {});
@@ -210,7 +280,7 @@ const skeleton = () => `<div class="head"><div class="sk" style="height:34px;wid
 
 /* ---------- home ---------- */
 function home() {
-  run++; history.length = 0; dock.hidden = true; newBtn.hidden = true;
+  run++; history.length = 0; G.reset(); document.documentElement.classList.remove('ag-lock'); dock.hidden = true; newBtn.hidden = true;
   const typed = atHome && $.querySelector('.hero input') ? $.querySelector('.hero input').value : '', first = !atHome || !$.querySelector('.hero');
   atHome = true;
   const t = pitch(), demo = !profile || profile.demo;
@@ -226,18 +296,20 @@ function home() {
 /* ---------- ask ---------- */
 async function ask(q) {
   q = q.trim(); if (!q) return;
-  const mine = ++run; atHome = false;
+  const mine = ++run; atHome = false; document.documentElement.classList.remove('ag-lock');
   dock.hidden = false; newBtn.hidden = false; dock.querySelector('input').value = ''; dock.querySelector('.go').disabled = true;
   scrollTo({ top: 0 });
   $.innerHTML = `<div class="q in">${esc(q)}</div><div class="steps" id="steps"><i></i><span>Thinking</span></div><div id="board">${skeleton()}</div>`;
   const steps = document.getElementById('steps'), board = document.getElementById('board');
   let head = null, grid = null, headline = '', got = false;
-  const first = () => { if (got) return; got = true; board.innerHTML = '<div class="head" id="head"></div><div class="grid" id="grid"></div><div id="next"></div>'; head = document.getElementById('head'); grid = document.getElementById('grid'); };
+  const first = () => { if (got) return; got = true; board.innerHTML = '<div class="head" id="head"></div><div class="grid" id="grid"></div><section class="card ag in" id="graph" hidden></section><div id="next"></div>'; head = document.getElementById('head'); grid = document.getElementById('grid'); if (G.size) showGraph(); };
+  const showGraph = () => { const el = document.getElementById('graph'); if (el.hidden) { el.hidden = false; G.mount(el); } };
   const fail = msg => { if (mine !== run) return; steps.hidden = true; if (!got) board.innerHTML = ''; board.insertAdjacentHTML('beforeend', `<div class="err">${esc(msg)}<button data-ask="${esc(q)}">Try again</button></div>`); dock.querySelector('.go').disabled = false; };
   const on = (event, d) => {
     if (event === 'step') steps.innerHTML = `<i></i><span>${esc(d.text)}</span>`;
+    else if (event === 'graph') { first(); G.merge(d); if (G.size) showGraph(); }
     else if (event === 'widget') {
-      first();
+      first(); G.say(JSON.stringify({ ...d, sources: null }));
       if (d.type === 'headline') { headline = d.text; head.innerHTML = `<div class="in">${d.tone === 'bad' ? '<span class="tone bad">Risk</span><br>' : d.tone === 'good' ? '<span class="tone good">Good sign</span><br>' : ''}<h2>${esc(d.text)}</h2>${sources(d)}</div>`; }
       else if (d.type === 'followups') document.getElementById('next').innerHTML = `<div class="next in"><div class="ttl">Ask next</div><div class="chips">${d.questions.slice(0, 3).map(x => `<button class="chip" data-ask="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>`;
       else if (render[d.type]) grid.insertAdjacentHTML('beforeend', render[d.type](d));

@@ -14,11 +14,12 @@ from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
 import anthropic
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from . import kg
+from .askgraph import Graph
 from .cala import cala
 
 log = logging.getLogger("perimeter.agent")
@@ -162,6 +163,7 @@ class Run:
     def __init__(self) -> None:
         self.sources = Sources()
         self.names: dict[str, str] = {}
+        self.graph = Graph()  # everything read from Cala, drawn next to the answer
 
     # ---- tools ---------------------------------------------------------------------------------
     async def find(self, name: str) -> dict:
@@ -189,6 +191,7 @@ class Run:
         ent = await kg.fetch_entity(id, limit=80)
         basics = kg.company_basics(ent)
         self.names[id] = basics["name"]
+        self.record(self.graph.entity, ent, focus=True)
         out, inc = ent.get("out", {}), ent.get("inc", {})
         edges = [e for e in out.get("PARTICIPATES_IN_CORPORATE_EVENT", []) if e.get("date")]
         as_investor = [e for e in edges if (e.get("role") or "").upper() == "INVESTOR"]
@@ -212,6 +215,7 @@ class Run:
     async def deals(self, id: str, limit: int = 6) -> dict:
         ent = await kg.fetch_entity(id, limit=80)
         me = kg.short_company(kg.clean_name(ent["name"]))
+        self.record(self.graph.entity, ent, focus=True)
         edges = sorted((e for e in ent.get("out", {}).get("PARTICIPATES_IN_CORPORATE_EVENT", []) if e.get("date")),
                        key=lambda e: e["date"], reverse=True)[: max(1, min(int(limit or 6), 10))]
         events = await asyncio.gather(*[kg.fetch_event(e) for e in edges])
@@ -219,6 +223,7 @@ class Run:
         for edge, ev in zip(edges, events):
             if not ev:
                 continue
+            self.record(self.graph.deal, ev)
             parts = ev["participants"]
             role = lambda r: [kg.clean_name(p["name"]) for p in parts if (p.get("role") or "").upper() == r]
             issuer = (role("ISSUER") or [None])[0]
@@ -241,6 +246,8 @@ class Run:
     async def rivals(self, id: str) -> dict:
         ent = await kg.fetch_entity(id)
         found = await kg.find_rivals(kg.company_basics(ent))
+        self.record(self.graph.entity, ent, focus=True)
+        self.record(self.graph.rivals, id, found)
         for r in found:
             self.names[r["id"]] = r["name"]
         return {"rivals": [{"id": r["id"], "name": r["name"], "why": r.get("sub")} for r in found]}
@@ -252,6 +259,14 @@ class Run:
         rivals, events = await asyncio.gather(kg.find_rivals(basics), kg.company_events(ent))
         investors = kg.investors_of(ent, events)[:15]
         held = await asyncio.gather(*[kg.safe_entity(i["id"], 80) for i in investors])
+        self.record(self.graph.entity, ent, focus=True)
+        self.record(self.graph.rivals, id, rivals)
+        for ev in events:
+            self.record(self.graph.deal, ev)
+        for inv in investors:
+            self.record(self.graph.edge, self.graph.node(inv["id"], inv["name"], inv["type"], kind="investor"),
+                        self.graph.alias.get(id), "invested", date=inv.get("first_date"), sources=inv.get("sources"))
+        self.record(self.graph.shared_portfolio, list(zip(investors, held)))
         rows = []
         for inv, inv_ent in zip(investors, held):
             portfolio = (inv_ent or {}).get("out", {}).get("INVESTED_IN", [])
@@ -271,6 +286,13 @@ class Run:
         res = await cala.ksearch(question)
         return {"answer": kg.trim_text(res.get("content") or "", 3500),
                 "src": self.sources.add(kg._ks_sources(res.get("context") or []), cap=4)}
+
+    def record(self, fn, *args, **kw) -> None:
+        """Add to the graph; drawing it is a bonus, so it must never fail the tool that feeds the answer."""
+        try:
+            fn(*args, **kw)
+        except Exception:
+            log.exception("graph record failed")
 
     def step(self, name: str, args: dict) -> str | None:
         who = self.names.get(args.get("id", ""), "")
@@ -380,6 +402,8 @@ async def answer(body: AskIn) -> AsyncIterator[str]:
             results = await asyncio.gather(*[execute(b) for b in uses])
             messages.append({"role": "assistant", "content": response.content})
             messages.append({"role": "user", "content": list(results)})
+            if run.graph.dirty:
+                yield sse("graph", run.graph.snapshot())
         if not shown:
             yield sse("widget", {"type": "headline", "tone": "neutral", "sources": [],
                                  "text": "I could not put an answer together for that. Try naming the company "
@@ -395,6 +419,17 @@ async def answer(body: AskIn) -> AsyncIterator[str]:
     except Exception as e:
         log.exception("agent failed")
         yield sse("error", {"message": f"Something went wrong: {type(e).__name__}."})
+
+
+@router.get("/graph/{eid}")
+async def expand(eid: str):
+    """Neighbours of one entity, for growing the answer's graph by hand (no model involved)."""
+    ent = await kg.safe_entity(eid, 80)
+    if not ent:
+        raise HTTPException(404, "entity not found")
+    g = Graph()
+    g.entity(ent, cap=40)
+    return g.snapshot()
 
 
 @router.post("")
