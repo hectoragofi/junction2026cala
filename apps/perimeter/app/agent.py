@@ -284,7 +284,8 @@ class Run:
 
     async def research(self, question: str) -> dict:
         res = await cala.ksearch(question)
-        return {"answer": kg.trim_text(res.get("content") or "", 3500),
+        self.record(self.graph.research, question, res)
+        return {"answer": kg.trim_block(res.get("content") or "", 3500),
                 "src": self.sources.add(kg._ks_sources(res.get("context") or []), cap=4)}
 
     def record(self, fn, *args, **kw) -> None:
@@ -301,7 +302,8 @@ class Run:
                 "deals": f"Pulling {who}'s deals" if who else "Pulling deals",
                 "rivals": f"Finding {who}'s rivals" if who else "Finding rivals",
                 "investor_overlap": f"Checking {who}'s investors against its rivals" if who else "Checking investors",
-                "research": "Asking Cala's knowledge search"}.get(name)
+                "research": f"Researching: {kg.trim_text(str(args.get('question') or ''), 70) or 'Cala knowledge search'}"
+                }.get(name)
 
     # ---- widgets -------------------------------------------------------------------------------
     def widget(self, w: Any) -> dict | None:

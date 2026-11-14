@@ -174,6 +174,20 @@ def trim_text(s: str | None, n: int) -> str | None:
     return cut.rstrip(",;:—–- ") + "…"
 
 
+def trim_block(s: str | None, n: int) -> str:
+    """Shorten text with line breaks (a markdown answer) to n chars at a paragraph or sentence end.
+
+    trim_text is for a single line: given a long answer whose first line is a sentence, it returns that line only.
+    """
+    s = (s or "").strip()
+    if len(s) <= n:
+        return s
+    cut = s[:n]
+    ends = [m.end() for m in re.finditer(r"[.!?](?=\s)|\n\s*\n", cut)]
+    stop = next((e for e in reversed(ends) if e >= n // 2), None)
+    return (cut[:stop].rstrip() if stop else cut.rsplit(None, 1)[0].rstrip(",;:—–- ")) + " …"
+
+
 def months_ago(d: str | None) -> float | None:
     if not d:
         return None

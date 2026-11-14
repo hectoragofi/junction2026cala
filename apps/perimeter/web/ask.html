@@ -160,12 +160,14 @@ td:first-child{font-weight:500}
 .ag-edge.role{stroke:#E0E0E5}
 .ag-edge.rival{stroke:#E9A29C;stroke-dasharray:4 4}
 .ag-edge.hot{stroke:var(--accent);stroke-opacity:.45}
+.ag-edge.mentions{stroke:#1BAF7A;stroke-opacity:.6;stroke-dasharray:2 4}
 .ag-node{cursor:pointer;outline:none;transition:opacity .2s}
 .ag-node text{pointer-events:none}
 .ag-node.sel :not(.halo,text),.ag-node:focus-visible :not(.halo,text){stroke:var(--accent);stroke-width:3}
 .ag-label{font-size:11px;fill:var(--muted);pointer-events:none;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round;transition:opacity .2s}
 .ag-label.hub{font-size:13px;font-weight:600;fill:var(--ink)}
 .ag-label.new{fill:var(--accent-ink);font-weight:500}
+.ag-label.q{fill:var(--ink);font-style:italic}
 .dim .ag-node.fade{opacity:.12}
 .dim .ag-edge.fade{opacity:.06}
 .dim .ag-edge.lit{stroke:var(--ink);stroke-opacity:.7;stroke-width:1.5}
@@ -175,6 +177,8 @@ td:first-child{font-weight:500}
 .ag-legend .hub{background:var(--ink);border-radius:3px}
 .ag-legend .inv{background:#fff;box-shadow:inset 0 0 0 1.5px var(--ink)}
 .ag-legend .riv{background:var(--red)}
+.ag-legend .res{background:#1BAF7A;border-radius:2px;transform:rotate(45deg) scale(.85)}
+.ag-legend .top{background:#fff;border-radius:2px;box-shadow:inset 0 0 0 1.5px #8A8A93;width:8px;height:8px}
 .ag-legend .per{background:#8A8A93;width:7px;height:7px}
 .ag-legend .new{background:#fff;box-shadow:inset 0 0 0 2.5px var(--accent),0 0 0 3px var(--accent-soft)}
 .ag-side{position:absolute;top:10px;right:10px;bottom:10px;width:min(320px,calc(100% - 20px));overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-pop);padding:16px;z-index:2}
@@ -191,7 +195,20 @@ td:first-child{font-weight:500}
 .ag-row button{flex:1;min-width:0;padding:7px 0}
 .ag-row b{display:block;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s}
 .ag-row button:hover b{color:var(--accent-ink)}
-.ag-row span{display:block;font-size:12px;color:var(--muted)}
+.ag-row span,.ag-row p{display:block;font-size:12px;color:var(--muted)}
+.ag-row p{flex:1;min-width:0;padding:7px 0;color:var(--ink)}
+.ag-side.wide{width:min(400px,calc(100% - 20px))}
+.ag-text{font-size:13px;line-height:1.5;margin:6px 0 4px}
+.ag-text p{margin:0 0 6px}
+.ag-text .h{font-weight:600;margin-top:10px}
+.ag-text .li{padding-left:12px;position:relative}
+.ag-text .li::before{content:"";position:absolute;left:2px;top:8px;width:4px;height:4px;border-radius:50%;background:var(--faint)}
+.ag-text.clip{max-height:132px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
+.ag-more{font-size:12px;font-weight:500;color:var(--accent-ink);margin-bottom:10px}
+.ag-srcs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.ag-srcs a{font-size:12px;color:var(--muted);padding:3px 9px;border-radius:999px;background:var(--fill);text-decoration:none;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-srcs a:hover{background:var(--accent-soft);color:var(--accent-ink)}
+.ag-rows+.ag-rows-t,.ag-text+.ag-rows-t,.ag-more+.ag-rows-t,.ag-srcs+.ag-rows-t{margin-top:10px}
 .ag-row a{flex-shrink:0;text-decoration:none;font-size:12px;color:var(--muted);width:24px;height:24px;display:grid;place-items:center;border-radius:999px;background:var(--fill)}
 .ag-row a:hover{background:var(--accent-soft);color:var(--accent-ink)}
 .ag-tip{position:absolute;pointer-events:none;z-index:3;max-width:260px;background:var(--ink);color:#fff;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:10px}
@@ -204,7 +221,7 @@ td:first-child{font-weight:500}
 .ag-find:hover{transform:translateY(-1px)}
 .ag-find:focus-visible,.ag-row button:focus-visible{border-radius:12px}
 .ag-find b{display:block;font-size:14px;font-weight:600;color:var(--accent-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ag-find span{display:block;font-size:12px;color:var(--muted)}
+.ag-find span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;color:var(--muted)}
 .ag.ag-full{position:fixed;inset:0;z-index:60;margin:0;border:0;border-radius:0;display:flex;flex-direction:column;animation:none}
 .ag-full .ag-stage{flex:1;height:auto;min-height:0}
 .ag-full .ag-finds{max-height:30vh;overflow-y:auto}
@@ -223,7 +240,7 @@ td:first-child{font-weight:500}
 </div></header>
 <main id="app"></main>
 <div class="dock" id="dock" hidden><div class="dockin"><button class="ghost" id="new" hidden>New question</button><form class="ask"><input placeholder="Ask a follow-up" aria-label="Ask a follow-up" autocomplete="off"><button class="go">Ask</button></form></div></div>
-<script src="/js/askgraph.js?v=1"></script>
+<script src="/js/askgraph.js?v=2"></script>
 <script>
 // Old links such as /#/map pointed at the app when it lived on the front page.
 if (location.hash.startsWith('#/')) location.replace('/app' + location.hash);

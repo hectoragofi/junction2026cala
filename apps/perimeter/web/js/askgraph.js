@@ -5,9 +5,17 @@
   const NS = 'http://www.w3.org/2000/svg';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-  const KIND = { company: 'Company', investor: 'Investor', rival: 'Rival', person: 'Person' };
-  const RANK = { company: 0, investor: 1, rival: 2, person: 3 };
-  const R = { company: 6.5, investor: 8, rival: 8, person: 5 };
+  const KIND = { company: 'Company', investor: 'Investor', rival: 'Rival', person: 'Person', topic: 'Topic', research: 'Research' };
+  const RANK = { topic: -1, company: 0, investor: 1, rival: 2 };  // a person or a research question never changes kind
+  const R = { company: 6.5, investor: 8, rival: 8, person: 5, topic: 5, research: 13 };
+  const PRE = { person: 'p:', topic: 't:', research: 'q:' };
+  const clip = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+  // Cala answers in light markdown: headings, bullets and bold are enough to read it.
+  const md = t => String(t || '').split(/\n+/).filter(l => l.trim()).map(l => {
+    const h = /^\s*#{1,6}\s+/.test(l), li = /^\s*(?:[-*•]|\d+[.)])\s+/.test(l);
+    const body = esc(l.replace(/^\s*(?:#{1,6}|[-*•]|\d+[.)])\s+/, '')).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    return `<p class="${h ? 'h' : li ? 'li' : ''}">${body}</p>`;
+  }).join('');
   const list = names => names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
 
   function create({ load }) {
@@ -22,13 +30,14 @@
     function merge(snap, { expand = false } = {}) {
       let added = 0, linked = 0;
       for (const n of snap.nodes || []) {
-        const key = (n.kind === 'person' ? 'p:' : 'o:') + String(n.name).toLowerCase();
+        const key = (PRE[n.kind] || 'o:') + String(n.name).toLowerCase();
         const id = nodes.has(n.id) ? n.id : byName.get(key) || n.id;
         alias.set(n.id, id);
         let m = nodes.get(id);
         if (!m) { m = { id, name: n.name, kind: n.kind }; nodes.set(id, m); byName.set(key, id); added++; }
-        else if (m.kind !== 'person' && n.kind !== 'person' && RANK[n.kind] > RANK[m.kind]) m.kind = n.kind;
+        else if (m.kind in RANK && n.kind in RANK && RANK[n.kind] > RANK[m.kind]) { if (m.kind === 'topic') m.sub = ''; m.kind = n.kind; }
         if (n.sub && !m.sub) m.sub = n.sub;
+        if (n.kind === 'research') { m.text = n.text || ''; m.claims = n.claims || []; m.sources = n.sources || []; }
         if (n.focus && !expand) m.focus = true;
       }
       for (const e of snap.edges || []) {
@@ -46,21 +55,22 @@
 
     function derive() {
       N = [...nodes.values()]; E = [...edges.values()];
-      N.forEach(n => { n.nb = new Set(); n.said = !!n.focus || (n.name.length > 2 && said.includes(n.name.toLowerCase())); });
-      E.forEach(e => { e.a = nodes.get(e.s); e.b = nodes.get(e.t); e.a.nb.add(e.b); e.b.nb.add(e.a); });
-      // "new": the answer never named it, yet it ties together two or more entities of this search
-      N.forEach(n => { n.hubs = [...n.nb].filter(x => x.focus); n.isNew = !n.said && n.nb.size >= 2; n.r = n.focus ? 18 : R[n.kind] + (n.isNew ? 2 : 0); });
-      E.forEach(e => { e.hot = e.a.isNew || e.b.isNew; });
+      N.forEach(n => { n.nb = new Set(); n.q = n.kind === 'research'; n.hub = !!n.focus || n.q; n.claim = ''; n.cited = false; n.said = n.hub || (n.name.length > 2 && said.includes(n.name.toLowerCase())); });
+      E.forEach(e => { e.a = nodes.get(e.s); e.b = nodes.get(e.t); e.a.nb.add(e.b); e.b.nb.add(e.a);
+        if (e.rel === 'mentions') { e.b.cited = true; if (e.label && !e.b.claim) e.b.claim = e.label; } });
+      // "new": the answer never named it, yet research brought it up or it ties together two or more entities
+      N.forEach(n => { n.hubs = [...n.nb].filter(x => x.focus); n.isNew = !n.said && (n.nb.size >= 2 || (n.cited && n.kind !== 'topic')); n.r = n.focus ? 18 : R[n.kind] + (n.isNew ? 2 : 0); });
+      E.forEach(e => { e.hot = e.rel !== 'mentions' && (e.a.isNew || e.b.isNew); });
       // place newcomers next to what they connect to, hubs first
-      N.filter(n => n.x == null).sort((a, b) => (b.focus ? 1 : 0) - (a.focus ? 1 : 0) || b.nb.size - a.nb.size).forEach(n => {
+      N.filter(n => n.x == null).sort((a, b) => (b.hub ? 1 : 0) - (a.hub ? 1 : 0) || b.nb.size - a.nb.size).forEach(n => {
         const near = [...n.nb].filter(x => x.x != null);
         const cx = near.reduce((s, o) => s + o.x, 0) / (near.length || 1), cy = near.reduce((s, o) => s + o.y, 0) / (near.length || 1);
         const a = Math.random() * Math.PI * 2, d = !near.length ? 160 * Math.random() : near.length > 1 ? 24 : 70 + Math.random() * 50;
         n.x = cx + Math.cos(a) * d; n.y = cy + Math.sin(a) * d; n.vx = n.vy = 0;
       });
     }
-    const finds_ = () => N.filter(n => n.isNew).sort((a, b) => b.hubs.length - a.hubs.length || b.nb.size - a.nb.size);
-    const around = n => [...n.nb].sort((a, b) => (b.focus ? 1 : 0) - (a.focus ? 1 : 0) || (b.said ? 1 : 0) - (a.said ? 1 : 0) || b.nb.size - a.nb.size);
+    const finds_ = () => N.filter(n => n.isNew).sort((a, b) => b.hubs.length - a.hubs.length || (b.claim ? 1 : 0) - (a.claim ? 1 : 0) || b.nb.size - a.nb.size);
+    const around = n => [...n.nb].filter(x => !x.q).sort((a, b) => (b.focus ? 1 : 0) - (a.focus ? 1 : 0) || (b.said ? 1 : 0) - (a.said ? 1 : 0) || b.nb.size - a.nb.size);
 
     /* ---------- layout ---------- */
     function tick() {
@@ -71,7 +81,7 @@
           const b = N[j];
           let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
           if (d2 < .01) { dx = Math.random() - .5; dy = Math.random() - .5; d2 = dx * dx + dy * dy; }
-          const d = Math.sqrt(d2), f = (a.focus ? 3 : 1) * (b.focus ? 3 : 1) * 2600 / d2;
+          const d = Math.sqrt(d2), f = (a.hub ? 3 : 1) * (b.hub ? 3 : 1) * 2600 / d2;
           const minD = a.r + b.r + 26, coll = d < minD ? (minD - d) / d * .5 : 0;
           const fx = dx / d * f * k + dx * coll, fy = dy / d * f * k + dy * coll;
           a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
@@ -81,8 +91,8 @@
         const a = e.a, b = e.b, dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
         const L = 84 + 9 * Math.sqrt(Math.max(a.nb.size, b.nb.size)) + (a.nb.size > 1 && b.nb.size > 1 ? 50 : 0);
         const s = (d - L) / d * .05 * k;
-        a.vx += dx * s * (a.focus ? .3 : 1); a.vy += dy * s * (a.focus ? .3 : 1);
-        b.vx -= dx * s * (b.focus ? .3 : 1); b.vy -= dy * s * (b.focus ? .3 : 1);
+        a.vx += dx * s * (a.hub ? .3 : 1); a.vy += dy * s * (a.hub ? .3 : 1);
+        b.vx -= dx * s * (b.hub ? .3 : 1); b.vy -= dy * s * (b.hub ? .3 : 1);
       });
       N.forEach(n => {
         n.vx -= n.x * .004 * k; n.vy -= n.y * .006 * k;
@@ -97,7 +107,9 @@
     function shape(n) {
       const halo = n.isNew ? `<circle class="halo" r="${n.r + 16}" fill="url(#agGlow)"/>` : '';
       if (n.focus) return `${halo}<rect x="${-n.r}" y="${-n.r}" width="${n.r * 2}" height="${n.r * 2}" rx="11" fill="#0A0A0A"/><text text-anchor="middle" dy="4" fill="#fff" font-size="11" font-weight="600">${esc(initials(n.name))}</text>`;
+      if (n.q) return `<rect x="-9.5" y="-9.5" width="19" height="19" rx="4" transform="rotate(45)" fill="#1BAF7A" stroke="#fff" stroke-width="2"/><text text-anchor="middle" dy="4.5" fill="#fff" font-size="13" font-weight="700">?</text>`;
       const ring = n.isNew ? 'stroke="#3D5AFE" stroke-width="2.5"' : null;
+      if (n.kind === 'topic') return `${halo}<rect x="${-n.r}" y="${-n.r}" width="${n.r * 2}" height="${n.r * 2}" rx="2" fill="#fff" ${ring || 'stroke="#8A8A93" stroke-width="1.5"'}/>`;
       if (n.kind === 'investor') return `${halo}<circle r="${n.r}" fill="#fff" ${ring || 'stroke="#0A0A0A" stroke-width="1.5"'}/>`;
       if (n.kind === 'rival') return `${halo}<circle r="${n.r}" fill="#D93025" ${ring || 'stroke="#fff" stroke-width="2"'}/>`;
       if (n.kind === 'person') return `${halo}<circle r="${n.r}" fill="#8A8A93" ${ring || 'stroke="#fff" stroke-width="1.5"'}/>`;
@@ -117,20 +129,22 @@
         g.setAttribute('aria-label', `${n.name}, ${KIND[n.kind]}${n.isNew ? ', not in the answer' : ''}`);
         g.innerHTML = shape(n); g.__n = n; n.el = g; gN.appendChild(g);
         const t = document.createElementNS(NS, 'text');
-        t.setAttribute('class', 'ag-label' + (n.focus ? ' hub' : n.isNew ? ' new' : ''));
-        t.setAttribute('text-anchor', 'middle'); t.textContent = n.name; n.lab = t; gL.appendChild(t);
+        t.setAttribute('class', 'ag-label' + (n.focus ? ' hub' : n.q ? ' q' : n.isNew ? ' new' : ''));
+        t.setAttribute('text-anchor', 'middle'); t.textContent = n.q ? clip(n.name, 38) : n.name; n.lab = t; gL.appendChild(t);
       });
-      const f = finds_();
-      count.textContent = `${N.length} ${N.length === 1 ? 'entity' : 'entities'} · ${E.length} links${f.length ? ` · ${f.length} not in the answer` : ''}`;
-      svg.setAttribute('aria-label', `Graph of this search: ${N.length} entities and ${E.length} links read from Cala`);
+      const f = finds_(), qs = N.filter(n => n.q).length, ents = N.length - qs;
+      count.textContent = `${ents} ${ents === 1 ? 'entity' : 'entities'} · ${E.length} links${qs ? ` · ${qs} research ${qs === 1 ? 'question' : 'questions'}` : ''}${f.length ? ` · ${f.length} not in the answer` : ''}`;
+      svg.setAttribute('aria-label', `Graph of this search: ${ents} entities, ${E.length} links and ${qs} research questions read from Cala`);
       finds.innerHTML = f.length ? `<div class="ag-finds-t">Not in the answer, but connected</div>${f.slice(0, 6).map(n => {
         const names = around(n).slice(0, 3).map(x => x.name);
-        return `<button type="button" class="ag-find" data-node="${esc(n.id)}"><b>${esc(n.name)}</b><span>${esc(KIND[n.kind])} linked to ${esc(n.nb.size > 3 ? names.join(', ') + ` and ${n.nb.size - 3} more` : list(names))}</span></button>`;
+        const more = n.nb.size - names.length - [...n.nb].filter(x => x.q).length;
+        const why = n.claim ? `Research: “${clip(n.claim, 150)}”` : `${KIND[n.kind]} linked to ${more > 0 ? names.join(', ') + ` and ${more} more` : list(names)}`;
+        return `<button type="button" class="ag-find" data-node="${esc(n.id)}"><b>${esc(n.name)}</b><span>${esc(why)}</span></button>`;
       }).join('')}` : `<div class="ag-finds-t">${N.length ? 'Nothing here goes beyond the answer yet. Click an entity and expand it, or ask a follow-up: the graph keeps growing.' : ''}</div>`;
       paint(); pos();
       if (sel && !side.hidden) panel(sel);
     }
-    const labelOn = n => allLabels || n.focus || n.isNew || (n.said && N.length < 90) || N.length < 26;
+    const labelOn = n => allLabels || n.hub || n.isNew || (n.said && N.length < 90) || N.length < 26;
     function paint() {
       if (!svg) return;
       const n = hovered || sel, on = n ? new Set([n, ...n.nb]) : null;
@@ -174,6 +188,7 @@
     /* ---------- detail panel ---------- */
     function phrase(n, e) {
       const from = e.a === n, year = e.date ? e.date.slice(0, 4) : '';
+      if (e.rel === 'mentions') return from ? KIND[e.b.kind] + (e.b.sub ? ' · ' + e.b.sub : '') : 'Research' + (e.label ? ` · “${e.label}”` : '');
       const what = e.rel === 'invested' ? (from ? 'Invested in' : 'Investor') : e.rel === 'rival' ? 'Rival'
         : e.rel === 'acquired' ? (from ? 'Acquired' : 'Acquired by') : e.rel === 'parent' ? (from ? 'Parent of' : 'Owned by') : (e.label || (from ? 'Works at' : 'Team'));
       return [what, e.rel === 'invested' || e.rel === 'acquired' ? e.label : '', year].filter(Boolean).join(' · ');
@@ -181,6 +196,20 @@
     function panel(n) {
       const rows = E.filter(e => e.a === n || e.b === n).map(e => ({ e, o: e.a === n ? e.b : e.a }))
         .sort((x, y) => (y.o.focus ? 1 : 0) - (x.o.focus ? 1 : 0) || (y.e.date || '').localeCompare(x.e.date || '') || y.o.nb.size - x.o.nb.size);
+      const row = ({ e, o }) => `<div class="ag-row"><button type="button" data-node="${esc(o.id)}"><b>${esc(o.name)}</b><span>${esc(phrase(n, e))}</span></button>${e.src ? `<a href="${esc(e.src.url)}" target="_blank" rel="noopener" title="${esc(e.src.name)}" aria-label="Source: ${esc(e.src.name)}">↗</a>` : ''}</div>`;
+      if (n.q) {  // a research question: what Cala answered, the claims behind it, and who it names
+        const cl = n.claims || [], sr = n.sources || [];
+        side.innerHTML = `<button type="button" class="ag-x" data-g="close" aria-label="Close">×</button>
+          <div class="ag-kind">Research in Cala${n.sub ? ' · ' + esc(n.sub) : ''}</div><h3>${esc(n.name)}</h3>
+          <div class="ag-acts"><button type="button" class="ag-btn dark" data-ask="${esc(n.name)}">Ask this</button></div>
+          ${n.text ? `<div class="ag-rows-t">What Cala answered</div><div class="ag-text${n.text.length > 420 ? ' clip' : ''}">${md(n.text)}</div>${n.text.length > 420 ? '<button type="button" class="ag-more" data-g="more">Show all</button>' : ''}` : '<div class="ag-note">Cala returned no written answer.</div>'}
+          ${cl.length ? `<div class="ag-rows-t">${cl.length} ${cl.length === 1 ? 'claim' : 'claims'} and where each comes from</div><div class="ag-rows">${cl.map(c => `<div class="ag-row"><p>${esc(c.text)}</p>${c.src ? `<a href="${esc(c.src.url)}" target="_blank" rel="noopener" title="${esc(c.src.name)}" aria-label="Source: ${esc(c.src.name)}">↗</a>` : ''}</div>`).join('')}</div>` : ''}
+          ${sr.length ? `<div class="ag-rows-t">Sources</div><div class="ag-srcs">${sr.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener" title="${esc(x.name)}">${esc(x.name)} ↗</a>`).join('')}</div>` : ''}
+          <div class="ag-rows-t">${rows.length} ${rows.length === 1 ? 'entity' : 'entities'} named</div><div class="ag-rows">${rows.map(row).join('')}</div>`;
+        side.hidden = false; side.classList.add('wide');
+        return;
+      }
+      side.classList.remove('wide');
       const hubs = around(n).slice(0, 2).map(x => x.name);
       const q = n.isNew && hubs.length > 1 ? `How is ${n.name} connected to ${hubs[0]} and ${hubs[1]}?` : `Tell me about ${n.name}`;
       side.innerHTML = `<button type="button" class="ag-x" data-g="close" aria-label="Close">×</button>
@@ -189,7 +218,7 @@
         <div class="ag-acts"><button type="button" class="ag-btn dark" data-ask="${esc(q)}">Ask about this</button>${n.kind === 'person' && !load ? '' : `<button type="button" class="ag-btn" data-g="expand" ${n.expanded ? 'disabled' : ''}>${n.expanded ? 'Expanded' : 'Expand from Cala'}</button>`}</div>
         ${note ? `<div class="ag-note">${esc(note)}</div>` : ''}
         <div class="ag-rows-t">${rows.length} ${rows.length === 1 ? 'link' : 'links'} in this search</div>
-        <div class="ag-rows">${rows.slice(0, 40).map(({ e, o }) => `<div class="ag-row"><button type="button" data-node="${esc(o.id)}"><b>${esc(o.name)}</b><span>${esc(phrase(n, e))}</span></button>${e.src ? `<a href="${esc(e.src.url)}" target="_blank" rel="noopener" title="${esc(e.src.name)}" aria-label="Source: ${esc(e.src.name)}">↗</a>` : ''}</div>`).join('')}${rows.length > 40 ? `<div class="ag-note">and ${rows.length - 40} more</div>` : ''}</div>`;
+        <div class="ag-rows">${rows.slice(0, 40).map(row).join('')}${rows.length > 40 ? `<div class="ag-note">and ${rows.length - 40} more</div>` : ''}</div>`;
       side.hidden = false;
     }
     function select(n, pan) {
@@ -211,7 +240,8 @@
     /* ---------- tooltip ---------- */
     function showTip(n, x, y) {
       const r = wrap.getBoundingClientRect(), names = around(n).slice(0, 3).map(o => o.name);
-      tip.innerHTML = `<b>${esc(n.name)}</b><span>${esc(KIND[n.kind])}${n.sub ? ' · ' + esc(n.sub) : ''}</span>${names.length ? `<span>Linked to ${esc(list(names))}${n.nb.size > 3 ? ` +${n.nb.size - 3}` : ''}</span>` : ''}${n.isNew ? '<span class="n">Not in the answer</span>' : ''}`;
+      if (n.q) tip.innerHTML = `<b>${esc(clip(n.name, 120))}</b><span>Research in Cala · ${n.nb.size} ${n.nb.size === 1 ? 'entity' : 'entities'} named</span>`;
+      else tip.innerHTML = `<b>${esc(n.name)}</b><span>${esc(KIND[n.kind])}${n.sub ? ' · ' + esc(n.sub) : ''}</span>${names.length ? `<span>Linked to ${esc(list(names))}${n.nb.size > 3 ? ` +${n.nb.size - 3}` : ''}</span>` : ''}${n.claim ? `<span>Research: “${esc(clip(n.claim, 140))}”</span>` : ''}${n.isNew ? '<span class="n">Not in the answer</span>' : ''}`;
       tip.hidden = false;
       tip.style.left = Math.min(x - r.left + 14, r.width - tip.offsetWidth - 8) + 'px'; tip.style.top = Math.max(8, y - r.top - tip.offsetHeight - 10) + 'px';
     }
@@ -222,7 +252,7 @@
       wrap = el; wrap.classList.add('ag');
       wrap.innerHTML = `<div class="ag-top"><div><div class="ttl">Everything this search read from Cala</div><div class="ag-count"></div></div>
           <div class="ag-tools"><button type="button" class="ag-btn" data-g="labels" aria-pressed="false">All labels</button><button type="button" class="ag-btn" data-g="fit">Fit</button><button type="button" class="ag-btn" data-g="full" aria-pressed="false">Full screen</button></div></div>
-        <div class="ag-stage"><div class="ag-legend"><span><i class="hub"></i>Asked about</span><span><i class="inv"></i>Investor</span><span><i class="co"></i>Company</span><span><i class="riv"></i>Rival</span><span><i class="per"></i>Person</span><span><i class="new"></i>Not in the answer, links 2+</span></div>
+        <div class="ag-stage"><div class="ag-legend"><span><i class="hub"></i>Asked about</span><span><i class="res"></i>Research question</span><span><i class="inv"></i>Investor</span><span><i class="co"></i>Company</span><span><i class="riv"></i>Rival</span><span><i class="per"></i>Person</span><span><i class="top"></i>Topic</span><span><i class="new"></i>Not in the answer</span></div>
           <aside class="ag-side" hidden></aside><div class="ag-tip" hidden></div></div>
         <div class="ag-finds"></div>`;
       const stage = wrap.querySelector('.ag-stage');
@@ -274,6 +304,7 @@
         else if (what === 'labels') { allLabels = !allLabels; g.setAttribute('aria-pressed', allLabels); g.classList.toggle('dark', allLabels); paint(); }
         else if (what === 'full') full(!wrap.classList.contains('ag-full'));
         else if (what === 'close') select(null);
+        else if (what === 'more') { side.querySelector('.ag-text').classList.remove('clip'); g.remove(); }
         else if (what === 'expand' && sel) expand(sel);
       });
       new ResizeObserver(() => { if (svg && svg.isConnected && !userCam) { vb = fitBox(); setVB(); } }).observe(stage);

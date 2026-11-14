@@ -125,8 +125,12 @@ own profile can always be changed. Cold builds share a global queue (`BUILD_SLOT
 - `POST /api/agent {q, history?, profile?}` → SSE for the Ask page: `step {text}`, `widget {type, ...}`, `done {}`,
   `error {message}`, and `graph {nodes, edges}` after each round of tool calls: everything the tools have read
   from Cala so far in this answer (cumulative, so the last one is complete).
-  `nodes: [{id, name, kind: company|investor|rival|person, sub?, focus?: bool}]` (`focus` = the question was about it),
-  `edges: [{s, t, rel: invested|role|rival|acquired|parent, label?, date?, src?: {name, url}}]` (`s` invested in `t`,
+  `nodes: [{id, name, kind: company|investor|rival|person|topic|research, sub?, focus?: bool}]` (`focus` = the question was about it),
+  `edges: [{s, t, rel: invested|role|rival|acquired|parent|mentions, label?, date?, src?: {name, url}}]` (`s` invested in `t`,
   `s` has a role at `t`, `s` acquired `t`, `s` is the parent of `t`).
+  A `research` node is one question the agent put to Cala's knowledge search: `name` is the question and it also
+  carries `text` (the answer, markdown), `claims: [{text, src?}]` and `sources: [{name, url}]`. It `mentions` every
+  entity Cala linked in the answer (places and events left out); the edge `label` is the claim that names the entity.
+  `topic` is a linked entity that is neither an organization nor a person (product, law, industry).
 - `GET /api/agent/graph/{id}` → `{nodes, edges}` in the same shape: one entity and its neighbours, used by
   "Expand from Cala" in the Ask graph (one Cala call, no model).

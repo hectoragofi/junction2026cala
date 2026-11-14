@@ -7,7 +7,9 @@ Add a new entry at the top each time.
 - Done: graph visualizer on the Ask page. `app/askgraph.py` records every entity and link the agent tools read from Cala (not only what the model was shown); `/api/agent` streams it as a `graph` event; `web/js/askgraph.js` draws it under the widgets and keeps it across follow-up questions. Entities the answer never named but that link two or more others are ringed in blue and listed under the graph. Click an entity for its links and sources, "Expand from Cala" (`GET /api/agent/graph/{id}`) or "Ask about this".
 - State: on branch `aranguren/ask-graph`, not merged. Tested only against a made-up Cala and a scripted model (no keys on my laptop): needs one run on the VPS with real data before shipping.
 - Next: check graph size on a big investor (profile reads up to 80 portfolio companies), then /ship.
-- Gotchas: `research` adds nothing to the graph (free text). `investor_overlap` only adds portfolio companies held by two or more of the investors, to keep the graph readable.
+- Research is in the graph too: each `research` call is a node (the question), with Cala's answer, claims and sources in its panel, linked to every entity Cala recognised in the answer by the claim that names it (`Graph.research`). Entities research brought up that the answer never named are flagged.
+- Fixed on the way: `research` cut a long answer down to its first line before giving it to the model (`kg.trim_text` is single-line); it now uses `kg.trim_block`.
+- Gotchas: `investor_overlap` only adds portfolio companies held by two or more of the investors, to keep the graph readable. Research parsing follows Cala's docs and `parse_screen` (content, explainability, context, entities) but has only run on made-up responses.
 
 ## 2026-11-14 - hector
 
