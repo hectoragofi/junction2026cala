@@ -14,12 +14,11 @@ Done lines: `- [x] <task> (owner: <user>)`.
 
 ## Doing
 
-- [ ] Ask graph: visualizer of everything an Ask answer read from Cala, with what the answer left out (owner: aranguren, branch: aranguren/ask-graph)
-
 
 
 ## Done
 
+- [x] Ask graph: visualizer of everything an Ask answer read from Cala (research included), with what the answer left out (owner: aranguren)
 - [x] Profiles + onboarding: per-browser profile, seat chooser at /, #/profile, profile context for /ask (owner: hector)
 
 - [x] Ask anything: Claude over Cala answering with generated widgets, /ask page, POST /api/agent (owner: hector)
